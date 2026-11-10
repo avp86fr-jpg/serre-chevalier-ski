@@ -1,0 +1,51 @@
+.discipline-tabs{grid-template-columns:1.2fr 1fr 1fr}
+.discipline-tabs button{white-space:nowrap}
+.explore-status{position:absolute;top:204px;left:50%;transform:translateX(-50%);border-radius:10px;padding:10px 16px;text-align:center;max-width:calc(100% - 32px);pointer-events:none}
+.explore-status span{display:block;color:#e4f2ca;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}
+.explore-status small{display:block;color:#adcad4;font-size:10px;margin-top:5px}
+.explore-actions{position:absolute;top:286px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:6;max-width:calc(100% - 30px)}
+.explore-actions button{min-height:44px;border:1px solid #d5e7b44d;border-radius:9px;padding:9px 14px;color:#e4f2ca;font-size:12px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+#app[data-explore="true"] .race-strip,#app[data-explore="true"] .ride-progress{display:none}
+#app[data-explore="true"] .mini-map{cursor:default}
+#worldMapDialog{width:min(1000px,calc(100% - 32px));max-width:1000px;padding:26px;overflow:hidden}
+#worldMapDialog[open]{display:flex;flex-direction:column}
+#worldMapDialog h2{font-size:28px;margin:12px 0;flex-shrink:0}
+#worldMapDialog .eyebrow,#worldMapDialog .dialog-actions,#worldMapDialog .map-description{flex-shrink:0}
+.map-description{max-width:650px;margin:0 0 16px}
+.world-map-layout{display:grid;grid-template-columns:1.45fr 1fr;gap:18px;min-height:0;height:min(52vh,500px)}
+#worldMap{width:100%;height:100%;object-fit:contain;background:#132e3c;border-radius:12px;border:1px solid #b7d5e526;min-height:0}
+.travel-browser{display:flex;flex-direction:column;min-height:0;gap:10px}
+#travelSearch{width:100%;font-size:16px;padding:12px;border-radius:8px;background:#28414b;border:1px solid #c9e1eb25;color:#e9f0ed;min-height:46px}
+.travel-list{overflow:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin}
+.travel-list button{display:block;width:100%;text-align:left;min-height:54px;padding:10px;border:0;border-bottom:1px solid #c9e1eb16;background:none;color:#e7f0e8;border-radius:5px}
+.travel-list button:hover{background:#cce99613}.travel-list strong{display:block;font-size:13px;font-weight:500}.travel-list small{display:block;font-size:10px;color:#a9c2cd;margin-top:5px}
+html[data-compact="true"] .explore-status{top:calc(var(--safe-top) + 139px);padding:7px 12px;max-width:calc(100% - 34px)}
+html[data-compact="true"] .explore-status span{font-size:11px;max-width:280px}
+html[data-compact="true"] .explore-status small{font-size:9px;margin-top:3px}
+html[data-compact="true"] .explore-actions{top:calc(var(--safe-top) + 192px);gap:6px}
+html[data-compact="true"] .explore-actions button{min-height:44px;font-size:11px;padding:8px 11px;max-width:185px}
+html[data-compact="true"] #worldMapDialog{padding:24px 16px 14px;width:calc(100% - 24px);max-width:900px}
+html[data-compact="true"] #worldMapDialog h2{font-size:22px;margin:10px 0}
+html[data-compact="true"] .map-description{font-size:11px;line-height:1.5;margin:0 0 12px}
+html[data-compact="true"] .world-map-layout{grid-template-columns:1fr;grid-template-rows:minmax(100px,1fr) minmax(120px,1fr);height:min(58dvh,550px);gap:10px}
+html[data-compact="true"] .travel-list button{min-height:52px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status{top:calc(var(--safe-top) + 64px);padding:5px 11px;max-width:290px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status span{font-size:10px;max-width:260px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status small{font-size:8px}
+html[data-compact="true"][data-orientation="landscape"] .explore-actions{top:calc(var(--safe-top) + 112px)}
+html[data-compact="true"][data-orientation="landscape"] #worldMapDialog{padding:16px}
+html[data-compact="true"][data-orientation="landscape"] #worldMapDialog>.eyebrow,html[data-compact="true"][data-orientation="landscape"] .map-description{display:none}
+html[data-compact="true"][data-orientation="landscape"] #worldMapDialog h2{font-size:19px;margin:0 0 10px}
+html[data-compact="true"][data-orientation="landscape"] .world-map-layout{grid-template-columns:1.2fr 1fr;grid-template-rows:minmax(90px,1fr);height:calc(var(--view-height) - var(--safe-top) - var(--safe-bottom) - 150px)}
+html[data-compact="true"][data-orientation="landscape"] #worldMapDialog .dialog-actions{padding-top:10px}
+html[data-compact="true"][data-keyboard="true"] #worldMapDialog .map-description,html[data-compact="true"][data-keyboard="true"] #worldMap{display:none}
+html[data-compact="true"][data-keyboard="true"] #worldMapDialog .world-map-layout{grid-template-columns:1fr;grid-template-rows:minmax(80px,1fr);height:min(200px,calc(var(--view-height) - var(--safe-top) - var(--safe-bottom) - 154px))}
+@media(max-width:360px){html[data-compact="true"] .explore-actions button{max-width:165px;font-size:10px}.discipline-tabs button{font-size:10px!important}}
+#app[data-explore="true"] .steering-pad{position:relative;touch-action:none}
+#app[data-explore="true"] .steering-pad:before{content:'HOLD & SLIDE';position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:8px;letter-spacing:1.2px;color:#d3e6cb;pointer-events:none}
+
+.surface-badge{display:table;font-size:10px;font-weight:600;letter-spacing:.3px;border:1px solid #dce5c988;background:#dceac8eb;color:#203b40;padding:5px 9px;border-radius:6px;margin:8px 0 3px;line-height:1.25}
+.surface-badge:before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;margin:0 6px 1px 0}
+.surface-badge[data-surface="powder"]{background:#c5dfede8;border-color:#b7d5e8;color:#234b62}.surface-badge[data-surface="edge"]{background:#f1d5a9eb;border-color:#ecd0a5;color:#594020}.surface-badge[data-surface="lift"]{background:#e0e6e9de;border-color:#d5dfe3;color:#344953}
+html[data-compact="true"] .surface-badge{font-size:9px;padding:4px 7px;margin-top:5px}
+html[data-compact="true"][data-orientation="landscape"] .surface-badge,html[data-compact="true"][data-short="true"] .surface-badge{font-size:8px;padding:3px 6px;margin-top:4px}

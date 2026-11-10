@@ -1,0 +1,206 @@
+/* The viewport contract is shared by fullscreen, the phone keyboard and rotation. */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--view-height:100dvh}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+#app{height:var(--view-height);min-height:0!important}
+[hidden]{display:none!important}
+button{touch-action:manipulation}
+.icon-button{width:44px;height:44px;flex-shrink:0}
+.icon-button svg,.touch-controls svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#fullscreenBtn[aria-pressed="true"]{color:var(--lime);border-color:#dcf29c88;background:#dff49f12}
+.sheet-toggle{display:none}
+.route-browser,.route-filters,.departure-actions{min-width:0}
+dialog{max-height:calc(var(--view-height) - var(--safe-top) - var(--safe-bottom) - 24px);overflow:auto;overscroll-behavior:contain}
+dialog .close{width:44px;height:44px;right:8px;top:6px;font-size:26px;border-radius:50%}
+dialog .primary,dialog .secondary{min-height:46px}
+#settingsDialog[open]{display:flex;flex-direction:column;overflow:hidden}
+#settingsDialog h2{flex-shrink:0;padding-right:12px;font-size:28px}
+#settingsDialog>.eyebrow,#settingsDialog>form{flex-shrink:0}
+.dialog-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px}
+.dialog-actions{padding-top:16px}
+.screen-setting{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 0 18px}
+.screen-setting strong{display:block;font-size:13px;font-weight:500}.screen-setting small{display:block;font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5}
+.screen-setting .secondary{width:auto;min-width:108px;margin:0;padding:10px 14px;font-size:12px;border-color:#dff49f55;color:var(--lime)}
+.orientation-setting{margin:0 0 8px;padding:0 0 8px;border:0;border-bottom:1px solid var(--line);min-width:0}
+.orientation-setting legend{font-size:13px;padding:0;margin:0 0 11px}
+.orientation-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.orientation-choices button{min-height:44px;border:1px solid var(--line);border-radius:6px;background:#203e48;font-size:12px;padding:8px 4px}
+.orientation-choices button[aria-pressed="true"]{color:var(--lime);background:#dff49f16;border-color:#dff49f88}
+.orientation-choices span{font-size:16px;margin-right:3px}
+.orientation-setting p,#installHint{font-size:11px;line-height:1.6;margin:10px 0 0}
+#installHint{background:#dff49f0c;border:1px solid #dff49f22;border-radius:6px;padding:10px;margin-bottom:10px}
+html[data-focus="true"] .explorer-intro,html[data-focus="true"] .riding .brand,html[data-focus="true"] .riding .mode-nav{display:none}
+html[data-focus="true"] .riding .topbar{justify-content:flex-end}
+
+/* Independent thumb groups allow steering and speed control at the same time. */
+.touch-controls{display:none;position:absolute;left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));bottom:calc(var(--safe-bottom) + 12px);justify-content:space-between;gap:20px;z-index:6;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html[data-touch="true"] .touch-controls,html[data-compact="true"] .touch-controls{display:flex}
+.thumb-pad{display:flex;gap:8px;pointer-events:auto}
+.touch-controls button{flex:none;width:clamp(56px,16.5vw,74px);height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid #e4efff44;border-radius:16px;background:rgba(18,43,55,.86);color:#eff5ec;padding:8px 4px;touch-action:none;backdrop-filter:blur(10px);font-size:9px;letter-spacing:.3px;transition:background .12s,border-color .12s}
+.touch-controls button[data-key="arrowup"]{font-size:9px;border-color:#dcf29c66;background:rgba(62,84,65,.85)}
+.touch-controls .brake-control svg{stroke:#e9b6a5}.touch-controls .tuck-control svg{stroke:var(--lime)}
+.touch-controls button.is-held{background:#a7c677;color:#172e31;border-color:#efffc9;box-shadow:0 0 0 2px #dcf29c30 inset}
+.touch-controls button.is-held svg{stroke:#173135}
+html[data-touch="true"][data-compact="false"] .ride-controls{bottom:calc(var(--safe-bottom) + 104px)}
+html[data-touch="true"][data-compact="false"] .speed-box,html[data-touch="true"][data-compact="false"] .mini-map{bottom:calc(var(--safe-bottom) + 180px)}
+
+/* Compact devices use a summary sheet in portrait and a side sheet in landscape. */
+html[data-compact="true"] .topbar{top:calc(var(--safe-top) + 8px);left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));height:44px;gap:8px}
+html[data-compact="true"] .brand{font-size:9px;letter-spacing:1.1px;gap:8px;min-width:0}
+html[data-compact="true"] .brand svg{width:28px;flex-shrink:0}
+html[data-compact="true"] .brand small{font-size:6px;letter-spacing:1.6px;margin-top:5px}
+html[data-compact="true"] .top-actions{gap:4px;margin-left:auto}
+html[data-compact="true"] .icon-button{width:44px;height:44px;backdrop-filter:blur(8px)}
+html[data-compact="true"] #soundBtn,html[data-compact="true"] .prototype,html[data-compact="true"] .mode-nav{display:none}
+html[data-compact="true"] .explorer-panel{position:static;left:auto;top:auto;width:auto;max-height:none;overflow:visible;padding:0}
+html[data-compact="true"] .explorer-intro{position:absolute;top:calc(var(--safe-top) + 76px);left:max(20px,var(--safe-left));right:max(20px,var(--safe-right));pointer-events:none}
+html[data-compact="true"] .explorer-intro .eyebrow{font-size:7px;letter-spacing:1.7px}
+html[data-compact="true"] h1{font-size:32px;line-height:1.1;letter-spacing:-1.4px;margin:12px 0 0}
+html[data-compact="true"] h1 br{display:none}
+html[data-compact="true"] .intro{display:none}
+html[data-compact="true"] .mountain-meta,html[data-compact="true"] .overview-footer,html[data-compact="true"] .terrain-caption{display:none}
+html[data-compact="true"] .vignette{background:linear-gradient(180deg,#102b3a99,transparent 35%,transparent 60%,#102b3a77)}
+html[data-compact="true"] .route-picker{position:absolute;left:max(12px,var(--safe-left));right:max(12px,var(--safe-right));bottom:calc(var(--safe-bottom) + 10px);width:auto;max-width:520px;margin:0 auto;max-height:calc(var(--view-height) - var(--safe-top) - var(--safe-bottom) - 72px);padding:0 16px 16px;border-radius:22px;display:flex;flex-direction:column;overflow:hidden;background:rgba(15,35,44,.94);backdrop-filter:blur(12px);box-shadow:0 12px 44px #06192366;z-index:3}
+html[data-compact="true"] .sheet-toggle{display:flex;align-items:center;gap:8px;flex-shrink:0;width:100%;min-height:48px;border:0;border-radius:12px;background:none;padding:6px 0;color:#d5e2e4;touch-action:pan-x;cursor:pointer}
+.sheet-toggle>span:first-child{font-size:8px;letter-spacing:1.2px;color:#adc2c7}.sheet-toggle #browseLabel{margin-left:auto;font-size:12px;color:var(--lime)}.sheet-chevron{color:var(--lime);font-size:20px;line-height:1;transition:transform .2s}
+.route-picker[data-expanded="true"] .sheet-chevron{transform:rotate(180deg)}
+html[data-compact="true"] .selected-info{flex-shrink:0;padding-top:0;border:0;min-height:44px}
+html[data-compact="true"] .selected-info h2{font-size:23px;margin-top:5px;overflow-wrap:anywhere}
+html[data-compact="true"] .grade{font-size:8px;letter-spacing:1px}
+html[data-compact="true"] .route-arrow{font-size:27px}
+html[data-compact="true"] .route-stats{padding:12px 0;flex-shrink:0}
+html[data-compact="true"] .route-stats strong{font-size:15px}
+html[data-compact="true"] .route-stats small{font-size:7px;letter-spacing:.8px;margin-top:4px}
+html[data-compact="true"] .piste-profile{height:30px;margin:0 0 8px;flex-shrink:0}
+html[data-compact="true"] .departure-actions{flex-shrink:0;padding-top:4px}
+html[data-compact="true"] .discipline-tabs{margin:0 0 6px;padding:3px;gap:4px;border-radius:8px}
+html[data-compact="true"] .discipline-tabs button{min-height:40px;padding:8px 4px;font-size:12px}
+html[data-compact="true"] .best-preview{font-size:10px;margin:7px 0 10px;line-height:1.4;min-height:0}
+html[data-compact="true"] #startBtn{min-height:48px;font-size:14px;border-radius:9px;padding:11px 15px}
+html[data-compact="true"] .route-picker[data-expanded="true"]{height:min(76dvh,calc(var(--view-height) - var(--safe-top) - var(--safe-bottom) - 72px))}
+html[data-compact="true"] .route-picker[data-expanded="true"] .selected-info,html[data-compact="true"] .route-picker[data-expanded="true"] .route-stats,html[data-compact="true"] .route-picker[data-expanded="true"] .piste-profile,html[data-compact="true"] .route-picker[data-expanded="true"] .discipline-tabs,html[data-compact="true"] .route-picker[data-expanded="true"] .best-preview{display:none}
+html[data-compact="true"] .route-browser{display:flex;flex-direction:column;min-height:0;flex:1}
+html[data-compact="true"] .panel-heading{margin:2px 0 10px;font-size:8px;flex-shrink:0}
+html[data-compact="true"] .route-filters{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html[data-compact="true"] .select-wrap{grid-column:1;grid-row:1;margin:0;min-width:0}
+html[data-compact="true"] .select-wrap select{font-size:16px;height:44px;min-width:0;padding:8px 22px 8px 9px;text-overflow:ellipsis}
+html[data-compact="true"] .select-wrap>span:last-child{right:9px;top:12px}
+html[data-compact="true"] #search{grid-column:2;grid-row:1;font-size:16px;height:44px;min-width:0;background:#28414b;border:1px solid #ffffff0c;border-radius:5px;padding:8px}
+html[data-compact="true"] .difficulty-tabs{grid-column:1/-1;grid-row:2;margin:0;gap:6px}
+html[data-compact="true"] .difficulty-tabs button{height:44px;min-width:44px;font-size:11px;flex:1}
+html[data-compact="true"] .difficulty-tabs button:first-child{flex:1.7}
+html[data-compact="true"] .route-list{max-height:none;min-height:0;flex:1;overflow-y:auto;margin:8px -4px 2px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+html[data-compact="true"] .route-option{min-height:48px;padding:10px 9px;font-size:14px;border-radius:7px;gap:12px}.route-option span:nth-child(2){min-width:0}
+html[data-compact="true"] .route-option small{font-size:11px}
+html[data-compact="true"] .route-option.active{background:#dff49f13;box-shadow:inset 2px 0 var(--lime)}
+html[data-compact="true"] #toast{width:max-content;max-width:calc(100% - 32px);font-size:11px;line-height:1.5;bottom:calc(var(--safe-bottom) + 96px);padding:10px 14px;text-align:center;border-radius:8px}
+html[data-compact="true"] .overview #toast{top:calc(var(--safe-top) + 61px);bottom:auto}
+html[data-compact="true"] dialog{width:calc(100% - max(24px,var(--safe-left)) - max(24px,var(--safe-right)));max-width:500px;padding:28px 20px 20px;border-radius:20px}
+html[data-compact="true"] dialog h2{font-size:26px;margin:14px 0 18px}
+html[data-compact="true"] .setting{min-height:56px;padding:12px 0;font-size:14px;gap:10px}
+html[data-compact="true"] .setting select{font-size:16px;max-width:160px;min-height:44px;min-width:0}
+html[data-compact="true"] .setting input{width:22px;height:22px}
+html[data-compact="true"] .screen-setting strong,html[data-compact="true"] .orientation-setting legend{font-size:14px}
+html[data-compact="true"] .orientation-choices button{font-size:12px}
+html[data-compact="true"] .loading-overlay h2{font-size:25px;text-align:center;padding:0 20px}
+html[data-compact="true"] .loading-overlay p{max-width:85%;text-align:center;line-height:1.5}
+
+/* Portrait descent: quiet centre, reachable controls, compact instrument groups. */
+html[data-compact="true"] .riding .brand small{display:none}
+html[data-compact="true"] .run-header{top:calc(var(--safe-top) + 64px);left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));transform:none;width:auto;min-width:0;max-width:none;padding:8px 10px;gap:10px;height:60px;border-radius:12px}
+html[data-compact="true"] .run-header>div:nth-child(2){flex:1;min-width:0}
+html[data-compact="true"] .run-header strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+html[data-compact="true"] .run-header small{font-size:7px;letter-spacing:1px}
+html[data-compact="true"] .run-time{font-size:19px;letter-spacing:.4px;padding-left:2px;margin-left:0;flex:none}
+html[data-compact="true"] .ride-progress{top:calc(var(--safe-top) + 131px);left:max(20px,var(--safe-left));right:max(20px,var(--safe-right));width:auto;height:2px}
+html[data-compact="true"] .race-strip{top:calc(var(--safe-top) + 145px);width:calc(100% - 40px);gap:0;justify-content:space-around;padding:0 4px}
+html[data-compact="true"] .race-strip small{font-size:7px;letter-spacing:.7px;margin-bottom:4px}
+html[data-compact="true"] .race-strip strong{font-size:15px}
+html[data-compact="true"] #ghostDelta{font-size:12px}
+html[data-compact="true"] .next-gate{top:calc(var(--safe-top) + 194px);padding:7px 10px;font-size:10px;border-radius:7px}
+html[data-compact="true"] .speed-box{bottom:calc(var(--safe-bottom) + 143px);left:max(18px,var(--safe-left));max-width:calc(100% - 164px)}
+html[data-compact="true"] #speed{font-size:64px;letter-spacing:-3px;line-height:1.15}
+html[data-compact="true"] .speed-box .eyebrow{font-size:8px;letter-spacing:.5px;max-width:185px;line-height:1.5}
+html[data-compact="true"] .speed-box>.speed-line{gap:8px}
+html[data-compact="true"] .ride-stats{gap:6px 10px;margin-top:4px}
+html[data-compact="true"] .ride-stats>span{font-size:7px!important;letter-spacing:.2px}
+html[data-compact="true"] .ride-stats>span:last-child{display:none}
+html[data-compact="true"] .ride-stats strong{font-size:11px}
+html[data-compact="true"] .mini-map{right:max(18px,var(--safe-right));bottom:calc(var(--safe-bottom) + 143px);width:118px;border-radius:10px}
+html[data-compact="true"] .mini-map canvas{height:88px;display:block}
+html[data-compact="true"] .mini-map>div{font-size:8px;line-height:1.4;gap:3px;padding:5px 9px 9px;display:flex;flex-direction:column}
+html[data-compact="true"] .mini-map #skiedDistance{display:none}
+html[data-compact="true"] .ride-controls{left:50%;right:auto;transform:translateX(-50%);top:auto;bottom:calc(var(--safe-bottom) + 88px);padding:0 6px;gap:6px;min-height:44px;border-radius:9px;background:#193b4988;backdrop-filter:blur(8px)}
+html[data-compact="true"] .ride-controls>span,html[data-compact="true"] .ride-controls kbd{display:none}
+html[data-compact="true"] .ride-controls button{display:block;min-height:44px;font-size:11px;padding:0 10px}
+html[data-compact="true"] .ride-controls #exitBtn{display:block;padding:0 10px;border-left:1px solid var(--line)}
+html[data-compact="true"] #performanceMeter{top:calc(var(--safe-top) + 231px);right:max(18px,var(--safe-right));font-size:8px}
+html[data-compact="true"] #gateToast{max-width:calc(100% - 32px);text-align:center;white-space:normal;letter-spacing:1px;top:43%}
+html[data-compact="true"][data-short="true"] .explorer-intro{top:calc(var(--safe-top) + 68px)}
+html[data-compact="true"][data-short="true"] h1{font-size:27px;margin-top:9px}
+html[data-compact="true"][data-short="true"] .piste-profile,html[data-compact="true"][data-short="true"] .best-preview{display:none}
+html[data-compact="true"][data-short="true"] .mini-map canvas{height:64px}
+
+/* Landscape rearranges content; it never rotates a portrait canvas with CSS. */
+html[data-compact="true"][data-orientation="landscape"] .explorer-intro{top:calc(var(--safe-top) + 74px);left:calc(max(14px,var(--safe-left)) + 330px);right:max(18px,var(--safe-right))}
+html[data-compact="true"][data-orientation="landscape"] h1{font-size:30px}
+html[data-compact="true"][data-orientation="landscape"] .route-picker{top:calc(var(--safe-top) + 62px);bottom:calc(var(--safe-bottom) + 8px);left:max(12px,var(--safe-left));right:auto;width:300px;max-width:42vw;max-height:none;margin:0;padding:0 12px 12px;border-radius:16px}
+html[data-compact="true"][data-orientation="landscape"] .route-picker[data-expanded="true"]{height:auto}
+html[data-compact="true"][data-orientation="landscape"] .sheet-toggle{min-height:44px}
+html[data-compact="true"][data-orientation="landscape"] .sheet-toggle>span:first-child{font-size:7px;letter-spacing:.6px}
+html[data-compact="true"][data-orientation="landscape"] #browseLabel{font-size:11px}
+html[data-compact="true"][data-orientation="landscape"] .selected-info{min-height:38px}
+html[data-compact="true"][data-orientation="landscape"] .selected-info h2{font-size:20px}
+html[data-compact="true"][data-orientation="landscape"] .route-stats{padding:9px 0}
+html[data-compact="true"][data-orientation="landscape"] .piste-profile,html[data-compact="true"][data-orientation="landscape"] .best-preview{display:none}
+html[data-compact="true"][data-orientation="landscape"] .departure-actions{margin-top:auto;padding-top:6px}
+html[data-compact="true"][data-orientation="landscape"] .discipline-tabs button{min-height:38px;font-size:11px;padding:6px 2px}
+html[data-compact="true"][data-orientation="landscape"] #startBtn{min-height:44px}
+html[data-compact="true"][data-orientation="landscape"] .panel-heading{display:none}
+html[data-compact="true"][data-orientation="landscape"] .route-filters{gap:6px}
+html[data-compact="true"][data-orientation="landscape"] .difficulty-tabs{gap:3px}
+html[data-compact="true"][data-orientation="landscape"] .difficulty-tabs button{height:40px;min-width:36px}
+html[data-compact="true"][data-orientation="landscape"] .route-option{min-height:44px;font-size:12px}
+html[data-compact="true"][data-orientation="landscape"] .run-header{top:calc(var(--safe-top) + 8px);left:50%;right:auto;transform:translateX(-50%);width:290px;height:48px;padding:2px 7px;border-radius:10px}
+html[data-compact="true"][data-orientation="landscape"] .run-header small{font-size:6px;margin-bottom:3px}
+html[data-compact="true"][data-orientation="landscape"] .run-header strong{font-size:12px}
+html[data-compact="true"][data-orientation="landscape"] .run-time{font-size:17px}
+html[data-compact="true"][data-orientation="landscape"] .riding .brand{display:none}
+html[data-compact="true"][data-orientation="landscape"] .riding .topbar{justify-content:flex-end;pointer-events:none}
+html[data-compact="true"][data-orientation="landscape"] .riding .top-actions{pointer-events:auto}
+html[data-compact="true"][data-orientation="landscape"] .riding #helpBtn{display:none}
+html[data-compact="true"][data-orientation="landscape"] .ride-progress{top:calc(var(--safe-top) + 62px);left:calc(50% - 140px);right:auto;width:280px}
+html[data-compact="true"][data-orientation="landscape"] .race-strip{top:calc(var(--safe-top) + 73px);width:290px;gap:0}
+html[data-compact="true"][data-orientation="landscape"] .race-strip small{font-size:6px}
+html[data-compact="true"][data-orientation="landscape"] .race-strip strong{font-size:13px}
+html[data-compact="true"][data-orientation="landscape"] #ghostDelta{font-size:11px}
+html[data-compact="true"][data-orientation="landscape"] .next-gate{top:calc(var(--safe-top) + 113px);font-size:9px;padding:6px 9px}
+html[data-compact="true"][data-orientation="landscape"] .speed-box{left:max(18px,var(--safe-left));bottom:calc(var(--safe-bottom) + 82px);max-width:175px}
+html[data-compact="true"][data-orientation="landscape"] #speed{font-size:48px}
+html[data-compact="true"][data-orientation="landscape"] .speed-box .eyebrow{font-size:7px;max-width:160px}
+html[data-compact="true"][data-orientation="landscape"] .ride-stats{display:none}
+html[data-compact="true"][data-orientation="landscape"] .mini-map{bottom:calc(var(--safe-bottom) + 82px);width:110px}
+html[data-compact="true"][data-orientation="landscape"] .mini-map canvas{height:70px}
+html[data-compact="true"][data-orientation="landscape"] .mini-map>div{font-size:7px;padding:4px 7px 6px}
+html[data-compact="true"][data-orientation="landscape"] .ride-controls{left:max(14px,var(--safe-left));right:auto;top:calc(var(--safe-top) + 8px);bottom:auto;transform:none;min-height:44px;gap:0;padding:0 2px;background:#193b4988;border:1px solid var(--line)}
+html[data-compact="true"][data-orientation="landscape"] .ride-controls #restartBtn{display:none}
+html[data-compact="true"][data-orientation="landscape"] .ride-controls button{font-size:10px;padding:0 9px}
+html[data-compact="true"][data-orientation="landscape"] .ride-controls #exitBtn{font-size:0;padding:0 12px}
+html[data-compact="true"][data-orientation="landscape"] .ride-controls #exitBtn:after{content:'Mountain';font-size:10px}
+html[data-compact="true"][data-orientation="landscape"] .touch-controls{bottom:calc(var(--safe-bottom) + 10px)}
+html[data-compact="true"][data-orientation="landscape"] .touch-controls button{width:64px;height:60px;border-radius:14px;gap:4px}
+html[data-compact="true"][data-orientation="landscape"] #performanceMeter{top:calc(var(--safe-top) + 61px);right:max(18px,var(--safe-right))}
+html[data-compact="true"][data-orientation="landscape"] #toast{bottom:calc(var(--safe-bottom) + 78px);max-width:55%;font-size:10px}
+html[data-compact="true"][data-orientation="landscape"] .overview #toast{top:calc(var(--safe-top) + 60px);left:68%;max-width:48%}
+@media(max-width:640px){html[data-compact="true"][data-orientation="landscape"] .run-header{width:244px}.run-header .run-time{letter-spacing:0}html[data-compact="true"][data-orientation="landscape"] .ride-progress{width:234px;left:calc(50% - 117px)}html[data-compact="true"][data-orientation="landscape"] .race-strip{width:244px}html[data-compact="true"][data-orientation="landscape"] .explorer-intro{display:none}html[data-compact="true"][data-orientation="landscape"] .route-picker{width:280px;max-width:48vw}}
+@media(prefers-reduced-motion:reduce){.touch-controls button,.sheet-chevron{transition:none}}
+/* Keep results and the pinned departure action reachable above a phone keyboard. */
+html[data-compact="true"][data-keyboard="true"] .route-picker{top:calc(var(--safe-top) + 58px);bottom:calc(var(--safe-bottom) + 6px);height:auto!important;max-height:none}
+html[data-compact="true"][data-keyboard="true"] .route-picker[data-expanded="true"] .panel-heading,html[data-compact="true"][data-keyboard="true"] .route-picker[data-expanded="true"] .difficulty-tabs{display:none}
+html[data-compact="true"][data-keyboard="true"] .sheet-toggle{min-height:40px}
+html[data-compact="true"][data-orientation="landscape"] .selected-info>div{min-width:0}
+html[data-compact="true"][data-orientation="landscape"] .selected-info h2,html[data-compact="true"][data-orientation="landscape"] .selected-info .grade{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+@media(max-height:360px){html[data-compact="true"][data-orientation="landscape"] .route-picker:not([data-expanded="true"]) .route-stats{display:none}}
+html[data-compact="true"][data-orientation="landscape"] #gateToast{top:53%}
+/* v0.11 jump control */
+.speed-pad .jump-control{background:linear-gradient(160deg,rgba(255,170,90,.32),rgba(255,120,60,.18));border-color:rgba(255,190,120,.55)}
+.speed-pad .jump-control.is-held{background:rgba(255,160,80,.55)}

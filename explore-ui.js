@@ -1,0 +1,16 @@
+import {DIFFICULTIES} from './core.js';
+// A small cached terrain raster keeps the map legible without another 3D render.
+export function terrainRelief(bounds,width,height,sample){const [x0,z0,x1,z1]=bounds,dx=(x1-x0)/width,dz=(z1-z0)/height,pixels=new Uint8ClampedArray(width*height*4),elevations=new Float32Array((width+1)*(height+1));
+ for(let z=0;z<=height;z++)for(let x=0;x<=width;x++)elevations[z*(width+1)+x]=sample(x0+x*dx,z0+z*dz);
+ for(let z=0;z<height;z++)for(let x=0;x<width;x++){const j=z*(width+1)+x,h=elevations[j],sx=(elevations[j+1]-h)/dx,sz=(elevations[j+width+1]-h)/dz,light=Math.max(0,Math.min(1,(.6+sx*.5+sz*.5)/Math.hypot(sx,sz,1))),altitude=Math.max(0,Math.min(1,(h-1200)/2200)),v=light*24+altitude*13,i=(z*width+x)*4;pixels.set([16+v,34+v,45+v,255],i);}
+ return pixels;
+}
+export function mapProjection(bounds,width,height,padding=22){const [x0,z0,x1,z1]=bounds,scale=Math.min((width-padding*2)/(x1-x0),(height-padding*2)/(z1-z0));return{scale,point:(x,z)=>[width/2+(x-(x0+x1)/2)*scale,height/2+(z-(z0+z1)/2)*scale]};}
+export function paintNetwork(canvas,data,bounds,run,segments=null,heightSample=null){const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,{point,scale}=mapProjection(bounds,w,h);ctx.fillStyle='#132e3c';ctx.fillRect(0,0,w,h);
+ if(heightSample){const raster=document.createElement('canvas');raster.width=w>300?128:64;raster.height=Math.max(32,Math.round(raster.width*(bounds[3]-bounds[1])/(bounds[2]-bounds[0])));const paint=raster.getContext('2d'),pixels=paint.createImageData(raster.width,raster.height);pixels.data.set(terrainRelief(bounds,raster.width,raster.height,heightSample));paint.putImageData(pixels,0,0);const [x,y]=point(bounds[0],bounds[1]);ctx.drawImage(raster,x,y,(bounds[2]-bounds[0])*scale,(bounds[3]-bounds[1])*scale);}
+ ctx.strokeStyle='#aec9d110';ctx.lineWidth=1;for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}for(let z=0;z<h;z+=40){ctx.beginPath();ctx.moveTo(0,z);ctx.lineTo(w,z);ctx.stroke();}
+ ctx.lineWidth=1.6;ctx.lineCap='round';if(segments){for(const s of segments){ctx.strokeStyle=DIFFICULTIES[s.route.difficulty]?.color||'#b0d7e4';ctx.beginPath();ctx.moveTo(...point(...s.a));ctx.lineTo(...point(...s.b));ctx.stroke();}}else{for(const r of data.routes){ctx.strokeStyle=DIFFICULTIES[r.difficulty]?.color||'#b0d7e4';ctx.beginPath();r.points.forEach((p,i)=>i?ctx.lineTo(...point(...p)):ctx.moveTo(...point(...p)));ctx.stroke();}}
+ ctx.setLineDash([3,4]);ctx.strokeStyle='#d5e5df65';ctx.lineWidth=1;for(const lift of data.lifts){ctx.beginPath();lift.points.forEach((p,i)=>i?ctx.lineTo(...point(...p)):ctx.moveTo(...point(...p)));ctx.stroke();}ctx.setLineDash([]);
+ ctx.font='12px sans-serif';for(const v of data.villages){const [x,y]=point(...v.position);if(x<0||x>w||y<0||y>h)continue;ctx.fillStyle='#e3f3b1';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();ctx.fillText(v.name,x+7,y-6);}ctx.fillStyle='#bad0d7';ctx.fillText('N ↑',14,20);if(run)paintPlayer(ctx,point,run);return point;
+}
+export function paintPlayer(ctx,point,run){const [x,y]=point(run.position.x,run.position.z);ctx.save();ctx.translate(x,y);ctx.rotate(-run.heading);ctx.fillStyle='#efffc4';ctx.strokeStyle='#14313b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,9);ctx.lineTo(-6,-6);ctx.lineTo(0,-3);ctx.lineTo(6,-6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
