@@ -7,9 +7,9 @@ export const CLOUD_GLSL=`
  float cloudField(vec2 p){p+=vec2(.006,.0025)*envTime;return envNoise(p)*.65+envNoise(p*2.07)*.35;}
  float cloudMask(vec2 p){return smoothstep(mix(.83,.23,cloudCover),mix(.99,.54,cloudCover),cloudField(p));}
 `;
-const PRESETS={clear:{sun:3.7,hemi:1.4,fog:.00009,cover:.28,wind:.35,top:'#2a6bb8',bottom:'#d2e4f2',fogColor:'#9bb6c8',sunColor:'#fff3d0',exposure:1.18},golden:{sun:3.1,hemi:1.55,fog:.0001,cover:.2,wind:.22,top:'#5a7fa0',bottom:'#f3d0aa',fogColor:'#b8b6b0',sunColor:'#ffc98a',exposure:1.08},snow:{sun:.8,hemi:2.2,fog:.0024,cover:.95,wind:.8,top:'#8eabc0',bottom:'#d8e2e8',fogColor:'#c0d0da',sunColor:'#fff5da',exposure:.92},overcast:{sun:1.15,hemi:2.0,fog:.0007,cover:.88,wind:.5,top:'#6f8aa0',bottom:'#cdd6dd',fogColor:'#a9b8c4',sunColor:'#e8eef2',exposure:.96}};
+const PRESETS={clear:{sun:4.15,hemi:1.05,fog:.000055,cover:.26,wind:.35,top:'#1d5eaf',bottom:'#d7e8f6',fogColor:'#8eafc4',sunColor:'#fff1c4',exposure:1.14},golden:{sun:3.35,hemi:1.2,fog:.00007,cover:.2,wind:.22,top:'#4e7398',bottom:'#f3d0aa',fogColor:'#b4a898',sunColor:'#ffc98a',exposure:1.06},snow:{sun:.95,hemi:1.7,fog:.0016,cover:.95,wind:.8,top:'#7e9eb4',bottom:'#d8e2e8',fogColor:'#b7c6d0',sunColor:'#fff5da',exposure:.95},overcast:{sun:1.35,hemi:1.45,fog:.00035,cover:.88,wind:.5,top:'#5e7b92',bottom:'#c5d0d8',fogColor:'#9aadb8',sunColor:'#e8eef2',exposure:.98}};
 export class AlpineEnvironment{
- constructor(world){this.world=world;this.time=0;this.blend=0;this.initialized=false;this.sunOffset={x:-160,y:220,z:-130};this.uniforms={envTime:{value:0},cloudCover:{value:.32},windPower:{value:.35},surfaceDetail:{value:1}};this.colors={top:new THREE.Color(),bottom:new THREE.Color(),fog:new THREE.Color(),sun:new THREE.Color()};this.makeDrift();}
+ constructor(world){this.world=world;this.time=0;this.blend=0;this.initialized=false;this.sunOffset={x:-160,y:220,z:-130};this.uniforms={envTime:{value:0},cloudCover:{value:.32},windPower:{value:.35},surfaceDetail:{value:1},hazeStart:{value:14000},hazeEnd:{value:90000},sunDir:{value:new THREE.Vector3(-160,220,-130).normalize()}};this.colors={top:new THREE.Color(),bottom:new THREE.Color(),fog:new THREE.Color(),sun:new THREE.Color()};this.makeDrift();}
  makeDrift(){
   const rand=seededRandom(604),positions=new Float32Array(192*3);for(let i=0;i<positions.length;i+=3){positions[i]=(rand()-.5)*100;positions[i+1]=rand()*2.5;positions[i+2]=(rand()-.5)*100;}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));
@@ -29,11 +29,19 @@ export class AlpineEnvironment{
   const elev=day?Math.max(.12,Math.sin(Math.PI*clamp((liveHour-6)/13,0,1))):.06;
   const az=(liveHour-13)/7;
   this.sunOffset.x=-180+az*90;this.sunOffset.y=70+elev*200;this.sunOffset.z=-70-elev*80;
+  this.uniforms.sunDir.value.set(this.sunOffset.x,this.sunOffset.y,this.sunOffset.z).normalize();
+  const alt=w.camera?.position.y||2000,ride=w.mode==='ride';
+  // Haze begins well beyond the local relief relative to camera height, so a high overview stay crisp.
+  const start=ride?Math.max(1400,alt*.85):Math.max(22000,alt*2.1);
+  const end=ride?start*6+5000:Math.max(90000,alt*8);
+  this.uniforms.hazeStart.value=lerp(this.uniforms.hazeStart.value,start,mix);
+  this.uniforms.hazeEnd.value=lerp(this.uniforms.hazeEnd.value,end,mix);
   const night=day?1:.42;
   w.sun.intensity=lerp(w.sun.intensity,p.sun*night*(1-.045*Math.sin(this.time*.04)),mix);w.hemi.intensity=lerp(w.hemi.intensity,p.hemi*(day?1:1.15),mix);
   w.sun.color.lerp(this.colors.sun.set(p.sunColor),mix);w.scene.fog.color.lerp(this.colors.fog.set(p.fogColor),mix);
-  w.scene.fog.density=lerp(w.scene.fog.density,w.mode==='ride'?p.fog*(day?1:1.15):w.weather==='snow'?.00007:.00003,mix);
+  w.scene.fog.density=lerp(w.scene.fog.density,ride?p.fog*(day?1:1.15):w.weather==='snow'?.000018:.00001,mix);
   if(w.renderer?.toneMappingExposure!=null)w.renderer.toneMappingExposure=lerp(w.renderer.toneMappingExposure,(p.exposure||1.1)*night,mix);
+  if(w.mode!=='ride')w.sun.position.set(this.sunOffset.x*70,this.sunOffset.y*70,this.sunOffset.z*70);
   w.sky.material.uniforms.topColor.value.lerp(this.colors.top.set(p.top),mix);w.sky.material.uniforms.bottomColor.value.lerp(this.colors.bottom.set(p.bottom),mix);
   this.drift.visible=enabled&&w.mode==='ride'&&w.quality!=='low';
   if(this.drift.visible){const x=w.skier.position.x,z=w.skier.position.z,cx=Math.round(x/16)*16,cz=Math.round(z/16)*16;

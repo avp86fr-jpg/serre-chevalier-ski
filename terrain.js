@@ -9,10 +9,11 @@ export function snowMaterial(texture,environment){
   // The field is attached before the first render and shared across every LOD.
   material.userData.pisteUniforms=emptyPisteUniforms();
   material.onBeforeCompile=shader=>{
-    Object.assign(shader.uniforms,environment||{envTime:{value:0},cloudCover:{value:0},surfaceDetail:{value:1}},material.userData.pisteUniforms);
+    Object.assign(shader.uniforms,environment||{envTime:{value:0},cloudCover:{value:0},surfaceDetail:{value:1},hazeStart:{value:14000},hazeEnd:{value:90000},sunDir:{value:{x:-.5,y:.7,z:-.4}}},material.userData.pisteUniforms);
     shader.vertexShader='varying vec3 vGround; varying vec3 vGroundNormal;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGround=(modelMatrix*vec4(position,1.0)).xyz;vGroundNormal=normalize(mat3(modelMatrix)*normal);');
     shader.fragmentShader=CLOUD_GLSL+PISTE_GLSL+`varying vec3 vGround; varying vec3 vGroundNormal;
+      uniform float hazeStart;uniform float hazeEnd;uniform vec3 sunDir;
       float groundHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float groundNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(groundHash(i),groundHash(i+vec2(1,0)),f.x),mix(groundHash(i+vec2(0,1)),groundHash(i+vec2(1,1)),f.x),f.y);}
     `+shader.fragmentShader;
@@ -32,9 +33,9 @@ export function snowMaterial(texture,environment){
       float lanes=snowWave(piste.y,5.4);
       float cord=snowWave(piste.y,.065)*closeSnow;
       float grain=groundNoise(vGround.xz*2.7);
-      vec3 powder=mix(vec3(.38,.56,.76),vec3(.90,.95,1.),drift);
-      powder*=.93+.07*wind;
-      vec3 groomedSnow=vec3(.95,.975,1.)*(.88+.10*lanes+.12*cord);
+      vec3 powder=mix(vec3(.62,.74,.86),vec3(.97,.99,1.),drift);
+      powder*=.96+.04*wind;
+      vec3 groomedSnow=vec3(.99,.995,1.)*(.92+.08*lanes+.10*cord);
       groomedSnow*=1.-smoothstep(.88,.99,abs(snowWave(piste.y,5.4)))*.08;
       float shoulder=exp(-pow((piste.x+.20)/max(.75,boundaryAA),2.));
       float bank=exp(-pow((piste.x+1.35)/max(.65,boundaryAA),2.));
@@ -61,23 +62,28 @@ export function snowMaterial(texture,environment){
       normal=normalize(abs(surfaceDet)*normal-sign(surfaceDet)*(dFdx(microHeight)*crossX+dFdy(microHeight)*crossY));}`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
       float facing=pow(1.-clamp(dot(normal,geometryViewDir),0.,1.),2.2);
-      float ao=mix(.62,1.,pow(max(.0,normal.y),.55))*(1.-rock*.22);
+      float ao=mix(.7,1.,pow(max(.0,normal.y),.55))*(1.-rock*.18);
       reflectedLight.indirectDiffuse*=ao;
-      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.05,.09,.16)*facing*(1.-rock);
-      vec3 sunDir=normalize(vec3(-160.,220.,-130.));
-      float shade=1.-cloudMask(vGround.xz*.00035)*.34;shade*=mix(.55,1.,pow(max(0.,dot(normal,sunDir)),.55));
-      reflectedLight.directDiffuse*=shade;reflectedLight.directSpecular*=shade;
+      vec3 lightDir=normalize(sunDir);
+      float sunLit=pow(max(0.,dot(normal,lightDir)),.7);
+      float shade=1.-cloudMask(vGround.xz*.00035)*.38;
+      vec3 sunSnow=vec3(1.,.99,.97);
+      vec3 blueShadow=vec3(.38,.55,.74);
+      reflectedLight.directDiffuse*=shade*mix(.42,1.18,sunLit);
+      reflectedLight.directSpecular*=shade*mix(.2,1.15,sunLit);
+      reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse*blueShadow,reflectedLight.indirectDiffuse*sunSnow,sunLit);
+      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.04,.08,.14)*facing*(1.-rock)*(1.-sunLit);
       float spark=pow(groundHash(floor(vGround.xz*28.)+floor(vGround.xz.yx*9.)),6.2);
-      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.15)*closeSnow*(1.-rock);
-      float glint=pow(max(0.,dot(reflect(-sunDir,normal),geometryViewDir)),36.)*closeSnow*(1.-rock);
-      reflectedLight.directSpecular+=vec3(1.,.98,.93)*(spark*(.7+groomed*1.1)+glint*(.3+.85*groomed));
-      float haze=smoothstep(400.,9000.,viewDistance);
-      vec3 air=vec3(.62,.73,.84);
-      reflectedLight.directDiffuse=mix(reflectedLight.directDiffuse,air*.22,haze);
-      reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse,air*.35,haze);
-      reflectedLight.directSpecular*=1.-haze*.85;`);
+      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.15)*closeSnow*(1.-rock)*sunLit;
+      float glint=pow(max(0.,dot(reflect(-lightDir,normal),geometryViewDir)),36.)*closeSnow*(1.-rock);
+      reflectedLight.directSpecular+=vec3(1.,.98,.93)*(spark*(.7+groomed*1.1)+glint*(.35+.8*groomed));
+      float haze=smoothstep(hazeStart,max(hazeEnd,hazeStart+1.),viewDistance);
+      vec3 air=vec3(.70,.80,.90);
+      reflectedLight.directDiffuse=mix(reflectedLight.directDiffuse,air*.55,haze*.55);
+      reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse,air*.7,haze*.5);
+      reflectedLight.directSpecular*=1.-haze*.6;`);
   };
-  material.customProgramCacheKey=()=> 'alpine-snow-v14';
+  material.customProgramCacheKey=()=> 'alpine-snow-v15';
   // Legacy callers supply a grain map; the world-space shader supersedes it.
   texture?.dispose();return material;
 }

@@ -34,7 +34,16 @@ export function larchGeometry(far=false,snow=false){
 }
 export function makeForests(world){
   const trees=[];world.forestChunks=[];world.trees=new THREE.Group();world.trees.name='Woodland';world.scene.add(world.trees);
-  for(const [x,z,h,r] of world.mountain.forest){const y=world.height(x,z);if(y<=2420&&!world.nearPiste(x,z,14)&&Math.abs(world.height(x+8,z)-y)<=10)trees.push([x,z,y,h,r]);}
+  const seed=seededRandom(911);
+  for(const [x,z,h,r] of world.mountain.forest){
+    const y=world.height(x,z);if(y<=2420&&!world.nearPiste(x,z,14)&&Math.abs(world.height(x+8,z)-y)<=12)trees.push([x,z,y,h,r]);
+    // Fill larch belts below ~2000 m and mixed stands just above, staying off the pistes.
+    if(y>=1300&&y<=2080&&!world.nearPiste(x,z,16)&&Math.abs(world.height(x+8,z)-y)<=8){
+      const ang=r*Math.PI*6,spread=7+r*6,nx=x+Math.sin(ang)*spread,nz=z+Math.cos(ang)*spread,ny=world.height(nx,nz);
+      if(Math.abs(ny-y)<6&&!world.nearPiste(nx,nz,14))trees.push([nx,nz,ny,h*(.85+seed()*.2), (r+.37)%1]);
+      if(y<1850&&seed()>.45){const bx=x-Math.cos(ang)*10,bz=z+Math.sin(ang)*10,by=world.height(bx,bz);if(Math.abs(by-y)<6&&!world.nearPiste(bx,bz,14))trees.push([bx,bz,by,h*(.8+seed()*.25),(r+.61)%1]);}
+    }
+  }
   world.treeObstacles=trees;
   const bark=new THREE.MeshStandardMaterial({color:0x4e4034,roughness:1}),leaves=new THREE.MeshStandardMaterial({color:0x1f4a3a,roughness:1}),snowMat=new THREE.MeshStandardMaterial({color:0xf2f7f8,roughness:.82});
   const trunkGeo=new THREE.CylinderGeometry(.11,.24,1,6),foliageGeo=branchGeometry(),snowGeo=branchGeometry(true);
@@ -42,7 +51,7 @@ export function makeForests(world){
   const o=new THREE.Object3D(),color=new THREE.Color();
   const larchNear=larchGeometry(),larchSnow=larchGeometry(false,true),larchFar=larchGeometry(true),larchMat=maskedMaterial(new THREE.MeshStandardMaterial({color:0x756650,roughness:1,side:THREE.DoubleSide})),branchMat=new THREE.MeshStandardMaterial({color:0x685947,roughness:1});
   for(const mat of [bark,leaves,snowMat,farMat,larchMat,branchMat])windMaterial(mat,world.environment?.uniforms);
-  for(const winterLarch of [true,false]){const species=trees.filter(p=>(p[4]<.72)===winterLarch);
+  for(const winterLarch of [true,false]){const species=trees.filter(p=>(p[2]<2000)===winterLarch);
   // Far trees use large batches. Near clusters only change small visibility buffers.
   for(const chunk of buckets(species,2048)){
     const far=new THREE.InstancedMesh(maskedGeometry(winterLarch?larchFar:farGeo,chunk.items.length),winterLarch?larchMat:farMat,chunk.items.length);
@@ -75,6 +84,27 @@ export function makeVillages(world){
     chunk.items.forEach((p,i)=>{const h=p[4],{x,z,w,d,angle}=buildingFrame(p),y=world.height(p[0],p[1]),rise=p[6]?.roof==='flat'?.2:Math.min(5,w*.24);o.rotation.set(0,angle,0);o.position.set(x,y+h,z);o.scale.set(w*1.10,rise*1.15,d*1.10);o.updateMatrix();roof.setMatrixAt(i,o.matrix);const c=Math.cos(angle),s=Math.sin(angle);o.position.set(x+c*w*.15-s*d*.2,y+h+rise*.7+.4,z-s*w*.15-c*d*.2);o.scale.set(1,1,1);o.updateMatrix();chimneys.setMatrixAt(i,o.matrix);});
     for(const mesh of [box,roof,chimneys]){mesh.receiveShadow=true;if(mesh.isInstancedMesh)mesh.computeBoundingSphere();freeze(mesh);group.add(mesh);}group.visible=false;world.buildings.add(group);world.buildingChunks.push({...chunk,refs:chunk.items.map(p=>p[5]),items:undefined,group,box,roof,chimneys,detailed:false});
   }
+  const landmarks=new THREE.Group();landmarks.name='Village landmarks';
+  const naveMat=new THREE.MeshStandardMaterial({color:0xc9c2b4,roughness:.9}),stoneMat=new THREE.MeshStandardMaterial({color:0x8a8680,roughness:.85}),spireMat=new THREE.MeshStandardMaterial({color:0x5a4e42,roughness:.7}),snowRoof=roofSnowMaterial(world.environment?.uniforms);
+  for(const v of world.data.villages||[]){
+    const [x,z]=v.position,y=world.height(x,z),g=new THREE.Group();
+    const nave=new THREE.Mesh(new THREE.BoxGeometry(9,6,16),naveMat);nave.position.set(x,y+3,z);
+    const apse=new THREE.Mesh(new THREE.BoxGeometry(7,5,6),naveMat);apse.position.set(x,y+2.6,z+10);
+    const tower=new THREE.Mesh(new THREE.BoxGeometry(4.2,14,4.2),stoneMat);tower.position.set(x,y+7,z-10);
+    const roof=new THREE.Mesh(roofGeometry(),snowRoof);roof.position.set(x,y+6.1,z);roof.scale.set(10.4,4.2,17.6);
+    const spire=new THREE.Mesh(new THREE.ConeGeometry(2.1,7,6),spireMat);spire.position.set(x,y+17.5,z-10);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(1.1,8,6),snowRoof);cap.position.set(x,y+21.2,z-10);
+    for(const m of [nave,apse,tower,roof,spire,cap]){m.castShadow=m.receiveShadow=true;g.add(m);}
+    // A tight ring of extra chalets so the hamlet reads from the overview.
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3+0.3,cx=x+Math.cos(a)*22,cz=z+Math.sin(a)*22,cy=world.height(cx,cz),w=7+i%3,d=9+i%2;
+      const house=new THREE.Mesh(new THREE.BoxGeometry(w,4.2,d),i%2?naveMat:stoneMat);house.position.set(cx,cy+2.1,cz);house.rotation.y=a+Math.PI/2;
+      const hr=new THREE.Mesh(roofGeometry(),snowRoof);hr.position.set(cx,cy+4.3,cz);hr.rotation.y=a+Math.PI/2;hr.scale.set(w*1.12,3,d*1.12);
+      house.castShadow=hr.castShadow=house.receiveShadow=hr.receiveShadow=true;g.add(house,hr);
+    }
+    landmarks.add(g);
+  }
+  world.buildings.add(freeze(landmarks));
 }
 
 function cableProfile(world,points,clearance){
@@ -123,7 +153,7 @@ export function makeCableways(world){
     const loop=cableLoop(line,surface?.6:2.2);if(loop.length<2)continue;
     for(let i=1;i<loop.points.length;i++)cables.push(...loop.points[i-1].toArray(),...loop.points[i].toArray());
     supports.forEach((p,i)=>{const next=supports[Math.min(i+1,supports.length-1)],prev=supports[Math.max(i-1,0)];towers.push([p.x,p.z,p.y,Math.atan2(next.x-prev.x,next.z-prev.z),p.y-world.height(p.x,p.z),surface?2:6]);});
-    if(!surface)for(const p of [supports[0],supports.at(-1)])stations.push([p.x,p.z,world.height(p.x,p.z),7,4,p.y-world.height(p.x,p.z)]);
+    if(!surface){const a=supports[0],b=supports.at(-1),a2=supports[1]||b,b2=supports.at(-2)||a;stations.push([a.x,a.z,world.height(a.x,a.z),16,11,7.5,Math.atan2(a2.x-a.x,a2.z-a.z),gondola],[b.x,b.z,world.height(b.x,b.z),16,11,7.5,Math.atan2(b.x-b2.x,b.z-b2.z),gondola]);}
     if(surface)continue;
     const count=Math.max(2,Math.ceil(loop.length/110)),group=new THREE.Group(),cabins=new THREE.InstancedMesh(gondola?cabinGeo:chairGeo,dark,count),hangers=new THREE.InstancedMesh(hangerGeo,steel,count),canopies=new THREE.InstancedMesh(canopyGeo,snowMat,count);
     group.add(cabins,hangers);if(gondola){const glazing=new THREE.InstancedMesh(new THREE.BoxGeometry(1.83,.86,1.43),new THREE.MeshStandardMaterial({color:0x466b7b,metalness:.55,roughness:.16}),count);group.add(canopies,glazing);cabins.material=new THREE.MeshStandardMaterial({vertexColors:true,color:0xaf3029,roughness:.42,metalness:.25});group.userData.glazing=glazing;}group.visible=false;world.lifts.add(group);
@@ -146,8 +176,22 @@ export function makeCableways(world){
     chunk.items.forEach(([x,z,y,angle,h,w],i)=>{o.rotation.y=angle;o.position.set(x,y-h/2,z);o.scale.set(Math.max(1,w*.28),h,Math.max(1,w*.28));o.updateMatrix();poles.setMatrixAt(i,o.matrix);o.position.y=y;o.scale.set(w,1,1);o.updateMatrix();bars.setMatrixAt(i,o.matrix);});
     for(const mesh of [poles,bars]){mesh.computeBoundingSphere();group.add(freeze(mesh));}world.lifts.add(group);world.liftChunks.push({...chunk,items:undefined,group});
   }
-  const stationGeo=new THREE.BoxGeometry(1,1,1),roofGeo=new THREE.BoxGeometry(1,.5,1),bases=new THREE.InstancedMesh(stationGeo,steel,stations.length),roofs=new THREE.InstancedMesh(roofGeo,snowMat,stations.length);
-  stations.forEach(([x,z,y,w,d,h],i)=>{o.rotation.y=0;o.position.set(x,y+h/2,z);o.scale.set(w,h,d);o.updateMatrix();bases.setMatrixAt(i,o.matrix);o.position.y=y+h+.3;o.scale.set(w+1,1,d+1);o.updateMatrix();roofs.setMatrixAt(i,o.matrix);});world.lifts.add(freeze(bases),freeze(roofs));
+  const stationHall=combine([
+    [new THREE.BoxGeometry(1,.72,1).translate(0,-.04,0),new THREE.Color(0x8d8a83)],
+    [new THREE.BoxGeometry(.92,.4,.12).translate(0,0,.46),new THREE.Color(0x4d7586)],
+    [new THREE.BoxGeometry(.38,.5,.5).translate(.58,-.06,-.12),new THREE.Color(0x5f6a70)],
+    [new THREE.BoxGeometry(.2,.2,1.05).translate(0,.2,0),new THREE.Color(0xc43b2a)],
+    [new THREE.BoxGeometry(1.05,.06,1.08).translate(0,.36,0),new THREE.Color(0xe7eef1)]
+  ]);
+  const stationCanopy=combine([[new THREE.BoxGeometry(1,.08,1),new THREE.Color(0xe7eef1)],[new THREE.BoxGeometry(.08,.45,.08).translate(-.45,-.2,-.4),new THREE.Color(0x6c7c83)],[new THREE.BoxGeometry(.08,.45,.08).translate(.45,-.2,-.4),new THREE.Color(0x6c7c83)],[new THREE.BoxGeometry(.08,.45,.08).translate(-.45,-.2,.4),new THREE.Color(0x6c7c83)],[new THREE.BoxGeometry(.08,.45,.08).translate(.45,-.2,.4),new THREE.Color(0x6c7c83)]]);
+  const hallMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.55,metalness:.2}),bases=new THREE.InstancedMesh(stationHall,hallMat,stations.length),roofs=new THREE.InstancedMesh(roofGeometry(),snowMat,stations.length),canopies=new THREE.InstancedMesh(stationCanopy,hallMat,stations.length);
+  stations.forEach(([x,z,y,w,d,h,angle],i)=>{
+    o.rotation.set(0,angle||0,0);o.position.set(x,y+h*.42,z);o.scale.set(w,h,d);o.updateMatrix();bases.setMatrixAt(i,o.matrix);
+    o.position.y=y+h*.88;o.scale.set(w*1.16,Math.max(2.4,h*.42),d*1.18);o.updateMatrix();roofs.setMatrixAt(i,o.matrix);
+    const fx=Math.sin(angle||0)*((d*.5)+6),fz=Math.cos(angle||0)*((d*.5)+6);
+    o.position.set(x+fx,y+3.1,z+fz);o.scale.set(w*.85,.7,9);o.updateMatrix();canopies.setMatrixAt(i,o.matrix);
+  });
+  world.lifts.add(freeze(bases),freeze(roofs),freeze(canopies));
 }
 const carrierObject=new THREE.Object3D(),carrierPosition=new THREE.Vector3(),carrierAhead=new THREE.Vector3();
 export function placeCarriers(run,time){

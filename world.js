@@ -22,8 +22,8 @@ export class MountainWorld{
     this.scene=new THREE.Scene();this.scene.fog=new THREE.FogExp2(0x8fb0c8,.000024);
     this.camera=new THREE.PerspectiveCamera(43,container.clientWidth/container.clientHeight,1,150000);
     this.target=new THREE.Vector3(-1300,1750,1700);this.orbit={yaw:.65,pitch:.62,distance:19000};this.cameraTarget=new THREE.Vector3();this.cameraPosition=new THREE.Vector3();
-    this.hemi=new THREE.HemisphereLight(0xcfe8ff,0x4a6a82,1.45);this.scene.add(this.hemi);
-    this.sun=new THREE.DirectionalLight(0xfff1cc,3.55);this.sun.position.set(-12000,17000,-7000);this.scene.add(this.sun);this.scene.add(this.sun.target);
+    this.hemi=new THREE.HemisphereLight(0xd8ecff,0x3a5870,1.05);this.scene.add(this.hemi);
+    this.sun=new THREE.DirectionalLight(0xfff1cc,4.15);this.sun.position.set(-12000,17000,-7000);this.scene.add(this.sun);this.scene.add(this.sun.target);
     this.sun.shadow.mapSize.set(2048,2048);this.sun.shadow.camera.left=-95;this.sun.shadow.camera.right=95;this.sun.shadow.camera.top=95;this.sun.shadow.camera.bottom=-95;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=1000;this.sun.shadow.normalBias=.09;this.sun.shadow.bias=-.00008;
     this.makeSky();this.makeTerrain(outer,true);this.terrain=new TerrainTiles(this.scene,mountain,snowMaterial(this.makeSnowTexture(),this.environment.uniforms));this.makePistes();this.makeTrees();this.makeBuildings();this.makeLifts();this.makeSkier();this.makeSnow();this.makeLabels();this.bindOrbit();this.makeOpenMountain();
     this.selectedGroup=new THREE.Group();this.scene.add(this.selectedGroup);this.gateGroup=new THREE.Group();this.scene.add(this.gateGroup);
@@ -47,19 +47,24 @@ export class MountainWorld{
   }
   makeSky(){
     this.environment=new AlpineEnvironment(this);
-    const material=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{...this.environment.uniforms,topColor:{value:new THREE.Color('#2f6fb8')},bottomColor:{value:new THREE.Color('#c9dcea')}},vertexShader:'varying vec3 vPos;void main(){vPos=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`
+    const material=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{...this.environment.uniforms,topColor:{value:new THREE.Color('#1d5eaf')},bottomColor:{value:new THREE.Color('#d7e8f6')}},vertexShader:'varying vec3 vPos;void main(){vPos=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`
       ${CLOUD_GLSL}
-      uniform vec3 topColor;uniform vec3 bottomColor;varying vec3 vPos;
-      void main(){vec3 ray=normalize(vPos);float h=max(ray.y,0.0);vec3 sky=mix(bottomColor,topColor,pow(h,.38));
-      sky=mix(sky,vec3(.55,.72,.88),smoothstep(.0,.18,h)*exp(-h*6.)*.35);
-      float sun=dot(ray,normalize(vec3(-160.,220.,-130.)));
-      sky+=vec3(1.,.86,.62)*pow(max(sun,0.),70.)*.55;
-      sky+=vec3(3.2,2.8,2.1)*smoothstep(.9997,.99995,sun);
-      float cirrus=pow(max(0.,sin(ray.x*39.+sin(ray.z*28.)*1.4)*sin(ray.z*19.+ray.x*7.)),10.);
-      sky=mix(sky,vec3(.93,.96,.99),cirrus*.2*smoothstep(.08,.45,h));
-      float clouds=cloudMask(ray.xz/max(ray.y,.08)*1.4)*smoothstep(.025,.14,ray.y);
-      vec3 cloudLight=mix(vec3(.62,.70,.77),vec3(.99,.98,.96),cloudField(ray.xz/max(ray.y,.08)*1.4+vec2(.16)));
-      sky=mix(sky,cloudLight,clouds*.88);gl_FragColor=vec4(sky,1.);
+      uniform vec3 topColor;uniform vec3 bottomColor;uniform vec3 sunDir;varying vec3 vPos;
+      void main(){vec3 ray=normalize(vPos);float h=max(ray.y,0.0);vec3 sky=mix(bottomColor,topColor,pow(h,.55));
+      sky=mix(sky,vec3(.78,.88,.96),smoothstep(.0,.22,h)*exp(-h*5.)*.4);
+      vec3 light=normalize(sunDir);
+      float sun=dot(ray,light);
+      sky+=vec3(1.,.82,.55)*pow(max(sun,0.),12.)*.35;
+      sky+=vec3(1.,.9,.7)*pow(max(sun,0.),48.)*.55;
+      sky+=vec3(4.5,3.8,2.6)*smoothstep(.997,.9997,sun);
+      float cirrus=pow(max(0.,sin(ray.x*28.+sin(ray.z*18.)*1.4)*sin(ray.z*14.+ray.x*5.)),8.);
+      sky=mix(sky,vec3(.95,.97,1.),cirrus*.18*smoothstep(.12,.55,h));
+      vec2 cu=ray.xz/max(ray.y,.1);
+      float clouds=smoothstep(.35,.72,cloudField(cu*1.05))*smoothstep(.03,.16,ray.y)*(1.-smoothstep(.62,.95,ray.y));
+      clouds*=.75+.25*cloudField(cu*2.3+vec2(.2));
+      float lit=clamp(dot(normalize(vec3(cu.x,1.,cu.y)),light)*.5+.5,0.,1.);
+      vec3 cloudLight=mix(vec3(.55,.62,.72),vec3(1.,.98,.95),pow(lit,1.2));
+      sky=mix(sky,cloudLight,clouds*.9);gl_FragColor=vec4(sky,1.);
 #include <tonemapping_fragment>
 #include <colorspace_fragment>
 }`});
