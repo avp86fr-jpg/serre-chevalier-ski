@@ -14,3 +14,8 @@
 @media(max-height:950px){.sector-journey{gap:4px;margin-bottom:12px}.sector-journey button{font-size:9px;padding:4px 7px;min-height:28px}}
 html[data-compact="true"] .sector-journey{display:none}
 @media(prefers-reduced-motion:no-preference){.primary,.route-option,.sector-journey button{transition:background .15s,filter .15s}}
+
+/* Ride HUD: keep the top-left brand readable on bright winter sky/snow. */
+.riding .topbar{z-index:8}
+.riding .brand{display:flex;opacity:1;visibility:visible;text-shadow:0 1px 10px rgba(12,28,36,.62),0 0 2px rgba(12,28,36,.45)}
+.riding .brand svg{filter:drop-shadow(0 1px 6px rgba(12,28,36,.55));stroke:#f7fbf8}
