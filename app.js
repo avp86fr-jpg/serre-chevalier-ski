@@ -26,7 +26,7 @@ function skipTutorial(){safeStorage.set('alpine-tutorial-done','1');hideTutorial
 function pistePar(path){const drop=Math.max(40,path.at(0).y-path.at(path.length).y);return drop/12.5;}
 function pisteMedal(run,path){const t=resultTime(run),par=pistePar(path);return t<=par*.85?'Gold':t<=par*1.05?'Silver':t<=par*1.35?'Bronze':'';}
 function awardMedal(run,path){const el=$('finishMedal');if(!el||!path){if(el)el.hidden=true;return;}const medal=pisteMedal(run,path);if(!medal){el.hidden=true;el.textContent='';return;}const key='alpine-medals';let store={};try{store=JSON.parse(safeStorage.get(key)||'{}')||{};}catch(e){store={};}const id=(selected?.id||path.id||'piste')+'|'+discipline,rank={Gold:3,Silver:2,Bronze:1};if((rank[medal]||0)>=(rank[store[id]]||0)){store[id]=medal;safeStorage.set(key,JSON.stringify(store));}el.hidden=false;el.textContent=(store[id]||medal)+' medal · '+clock(resultTime(run));}
-function updateTokenHud(){const el=$('tokenCount');if(!el||!run)return;const n=run.collects||0;el.textContent=String(n);if(n>lastCollectHud){$('gateToast').style.fontSize='18px';$('gateToast').textContent='STAR  '+n; $('gateToast').style.color='#ffe082';$('gateToast').style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>$('gateToast').style.opacity=0,700);}lastCollectHud=n;}
+function updateTokenHud(){const el=$('tokenCount');if(!el||!run)return;const n=run.collects||0;el.textContent=String(n);if(n>lastCollectHud){$('gateToast').style.fontSize='18px';$('gateToast').textContent='STAR  '+n; $('gateToast').style.color='#ffe082';$('gateToast').style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>$('gateToast').style.opacity=0,window.__alpineCapture?2000:700);}lastCollectHud=n;}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3200);}
 function selectedText(r){return r.name+(r.sections>1?' · section '+r.section:'');}
 function listRoutes(){
@@ -190,7 +190,21 @@ function setupEvents(){
 async function toggleSound(){
   try{if(!audioContext){audioContext=new (window.AudioContext||window.webkitAudioContext)();const count=audioContext.sampleRate*2,buffer=audioContext.createBuffer(1,count,audioContext.sampleRate),samples=buffer.getChannelData(0);for(let i=0;i<count;i++)samples[i]=(Math.random()*2-1)*.5;const noise=audioContext.createBufferSource();noise.buffer=buffer;noise.loop=true;audioFilter=audioContext.createBiquadFilter();audioFilter.type='lowpass';audioFilter.frequency.value=800;audioGain=audioContext.createGain();audioGain.gain.value=0;noise.connect(audioFilter).connect(audioGain).connect(audioContext.destination);audioSkiFilter=audioContext.createBiquadFilter();audioSkiFilter.type='bandpass';audioSkiFilter.Q.value=.75;audioSkiGain=audioContext.createGain();audioSkiGain.gain.value=0;noise.connect(audioSkiFilter).connect(audioSkiGain).connect(audioContext.destination);noise.start();}await audioContext.resume();audioOn=!audioOn;$('soundBtn').setAttribute('aria-label',audioOn?'Mute sound':'Enable sound');$('soundBtn').title=audioOn?'Mute sound':'Enable sound';$('soundBtn').style.color=audioOn?'#dff49f':'';toast(audioOn?'Mountain sound enabled':'Mountain sound muted');}catch{toast('Sound is unavailable in this browser.');}finally{$('soundEnabled').checked=audioOn;}
 }
+function driveCapture(dt,heldKeys){
+  if(!world||!run)return;
+  paused=false;if($('pauseDialog')?.open)$('pauseDialog').close();
+  if(heldKeys){keys.clear();for(const k of heldKeys)keys.add(k);for(const k of ['left','right','brake','tuck','jump','grab','spin'])input[k]=false;}
+  input.left=held('a')||held('arrowleft');input.right=held('d')||held('arrowright');input.tuck=held('w')||held('arrowup');input.brake=held('s')||held('arrowdown')||held(' ');input.jump=keys.has('j')||keys.has('shift');input.steer=(Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft')));input.spin=heldKeys?.includes('spin')?8:0;
+  elapsed+=dt;
+  if(mode==='ride'&&run&&!paused){
+    const events=run.openWorld?advanceExplore(run,input,dt):advanceRun(run,input,dt);
+    for(const event of events){if(event==='finish')finish();else if(event==='blocked');else if(event==='lift-exit');else if(event&&event.type==='landing')airEvent(event);else if(event&&event.type==='crash')airEvent(event);else if(event&&event.type==='pop');else if(event)gateEvent(event);}
+    hudDue-=dt;if(hudDue<=0){updateHud();hudDue=.1;}
+  }
+  world.render(run,input,dt,elapsed,dt);
+}
 function animate(now){
+  if(window.__alpineCapture?.lock)return;
   const frameDt=Math.max(0,(now-lastTime)/1000);let dt=frameDt;lastTime=now;
   // Long stalls pause the run; normal low frame rates retain every physics step.
   if(dt>.5){if(mode==='ride'&&!paused)pauseRide();dt=0;}
@@ -210,7 +224,7 @@ function airEvent(event){
   const toastEl=$('gateToast');if(!toastEl)return;
   if(event.type==='crash'){toastEl.style.fontSize='22px';toastEl.textContent='CRASH';toastEl.style.color='#f5b6a3';}
   else {const label=event.style==='clean'?'CLEAN LANDING':event.style==='heavy'?'HEAVY LANDING':'SKETCHY LANDING';const grab={mute:'MUTE',stalefish:'STALEFISH',safety:'SAFETY',indy:'INDY'}[event.grab]||'';const spin=Math.abs(event.spin||0),rot=spin>Math.PI*1.65?'360':spin>Math.PI*.7?'180':'';const combo=(run?.combo||0)>1?run.combo+'× COMBO':'';toastEl.style.fontSize='20px';toastEl.textContent=[label,grab,rot,event.airTime.toFixed(1)+'s',combo].filter(Boolean).join(' · ');toastEl.style.color=event.style==='clean'?'#e0f6a1':'#f6e2a1';}
-  toastEl.style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>toastEl.style.opacity=0,1300);
+  toastEl.style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>toastEl.style.opacity=0,window.__alpineCapture?2800:1300);
 }
 let weatherManual=false,lastLiveWeather=null,weatherPoll=null;
 function applyLiveWeather(reading,fromCache){
@@ -246,7 +260,7 @@ async function init(){
     const params=new URLSearchParams(location.search),wanted=params.get('piste')||params.get('explore');
     if(wanted){const route=data.routes.find(r=>r.name.toLowerCase()===wanted.toLowerCase()||r.id===wanted);if(route)selectRoute(route);}
     $('loading').classList.add('done');lastTime=performance.now();requestAnimationFrame(animate);
-    window.__serre={get world(){return world;},get run(){return run;},get data(){return data;},relocate,startRide,selectRoute,resumeRide,pauseRide};
+    window.__serre={get world(){return world;},get run(){return run;},get data(){return data;},relocate,startRide,selectRoute,resumeRide,pauseRide,driveCapture};
     if(params.get('play')==='1'||params.get('explore')==='1')startRide();
     world.renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();pauseRide();toast('3D graphics paused. Reload the page to restore the mountain.');});
   }catch(error){console.error(error);$('loading').querySelector('h2').textContent='The mountain couldn’t load.';$('loadText').textContent=error.message.includes('WebGL')?'Enable WebGL / hardware acceleration, then reload this page.':error.message;$('loading').querySelector('.loading-line').remove();const retry=document.createElement('button');retry.className='secondary';retry.textContent='Try again';retry.style.width='150px';retry.onclick=()=>location.reload();$('loading').appendChild(retry);}

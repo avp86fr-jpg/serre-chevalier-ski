@@ -50,12 +50,13 @@ export function snowMaterial(texture,environment){
       stone=mix(stone,vec3(.34,.32,.29),groundNoise(vGround.xz*.04)*midDetail);
       stone*=1.-fissure*.45;
       vec3 ground=mix(snow,stone,rock*.96);
+      float forestAlbedo=smoothstep(4500.,9500.,viewDistance);
       float forest=(1.-groomed)*(1.-rock)*smoothstep(2080.,1960.,vGround.y)*smoothstep(1180.,1380.,vGround.y)*(1.-smoothstep(.20,.38,slope));
       float cover=groundNoise(vGround.xz*.0016);
       cover=mix(smoothstep(.20,.52,cover*.65+.38),smoothstep(.16,.62,cover*.8+groundNoise(vGround.xz*.006)*.22),1.-farSoft);
       forest*=cover;
       vec3 canopy=mix(vec3(.11,.19,.12),vec3(.16,.24,.14),cover);
-      ground=mix(ground,canopy,forest*mix(.84,.68,midDetail));
+      ground=mix(ground,canopy,forest*forestAlbedo*.84);
       diffuseColor.rgb*=ground;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
@@ -97,7 +98,7 @@ export function snowMaterial(texture,environment){
       reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse,air*.7,haze*.5);
       reflectedLight.directSpecular*=1.-haze*.6;`);
   };
-  material.customProgramCacheKey=()=> 'alpine-snow-v16';
+  material.customProgramCacheKey=()=> 'alpine-snow-v17';
   // Legacy callers supply a grain map; the world-space shader supersedes it.
   texture?.dispose();return material;
 }
