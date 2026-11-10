@@ -96,8 +96,8 @@ function buildGeometry(bones,low=false){
  add('head',new THREE.SphereGeometry(.168,low?10:16,low?8:12,0,Math.PI*2,0,Math.PI*.64),COLORS.panel,1,[0,.128,-.015]);
  add('head',new THREE.TorusGeometry(.162,.018,low?4:6,low?12:18),COLORS.sole,1,[0,.108,.02],[Math.PI/2,0,0]);
  add('head',new THREE.TorusGeometry(.15,.014,low?4:5,low?10:16),COLORS.dark,1,[0,.1,.01],[1.15,0,0]);
- add('head',visorGeometry(.32,.09,.1,1.15),COLORS.sole,1,[0,.102,.03]);
- add('head',visorGeometry(.275,.066,.118,.95),COLORS.lens,2,[0,.102,.036]);
+ add('head',visorGeometry(.34,.1,.11,1.28),COLORS.sole,1,[0,.102,.028]);
+ add('head',visorGeometry(.29,.07,.13,.98),COLORS.lens,2,[0,.102,.042]);
  for(const side of [-1,1]){
   capsule('hand'+side,.048,.05,COLORS.glove,1,[0,-.015,.025],[.25,0,0],[1.05,1,1.08]);
   capsule('upperArm'+side,.072,.20,COLORS.shell,0,[0,.12,0]);

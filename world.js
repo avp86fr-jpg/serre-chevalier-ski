@@ -25,7 +25,7 @@ export class MountainWorld{
     this.hemi=new THREE.HemisphereLight(0xd8ecff,0x3a5870,1.05);this.scene.add(this.hemi);
     this.sun=new THREE.DirectionalLight(0xfff1cc,4.15);this.sun.position.set(-12000,17000,-7000);this.scene.add(this.sun);this.scene.add(this.sun.target);
     this.sun.shadow.mapSize.set(2048,2048);this.sun.shadow.camera.left=-95;this.sun.shadow.camera.right=95;this.sun.shadow.camera.top=95;this.sun.shadow.camera.bottom=-95;this.sun.shadow.camera.near=1;this.sun.shadow.camera.far=1000;this.sun.shadow.normalBias=.09;this.sun.shadow.bias=-.00008;
-    this.makeSky();this.makeTerrain(outer,true);this.terrain=new TerrainTiles(this.scene,mountain,snowMaterial(this.makeSnowTexture(),this.environment.uniforms));this.makePistes();this.makeTrees();this.makeBuildings();this.makeLifts();this.makeSkier();this.makeSnow();this.makeLabels();this.bindOrbit();this.makeOpenMountain();
+    this.makeSky();this.makeTerrain(outer,true);this.terrain=new TerrainTiles(this.scene,mountain,snowMaterial(this.makeSnowTexture(),this.environment.uniforms));this.makePistes();this.makeTrees();this.makeBuildings();this.makeLifts();this.makeSkier();this.makeSnow();this.makeFlare();this.makeLabels();this.bindOrbit();this.makeOpenMountain();
     this.selectedGroup=new THREE.Group();this.scene.add(this.selectedGroup);this.gateGroup=new THREE.Group();this.scene.add(this.gateGroup);
     this.rideCamera=0;this.smoothHeading=0;this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(container);this.updateOverview(true);
   }
@@ -115,11 +115,27 @@ export class MountainWorld{
     this.ghostCharacter=new Skier({ghost:true});this.ghost=this.ghostCharacter.root;this.scene.add(this.ghost);
   }
   makeSnow(){
-    const rand=seededRandom(12),p=new Float32Array(1400*3);for(let i=0;i<p.length;i+=3){p[i]=(rand()-.5)*130;p[i+1]=rand()*90;p[i+2]=(rand()-.5)*130;}
+    const rand=seededRandom(12),p=new Float32Array(2600*3);for(let i=0;i<p.length;i+=3){p[i]=(rand()-.5)*150;p[i+1]=rand()*110;p[i+2]=(rand()-.5)*150;}
     const mapData=new Uint8Array(32*32*4);for(let y=0;y<32;y++)for(let x=0;x<32;x++){const i=(y*32+x)*4,r=Math.hypot(x-15.5,y-15.5)/15.5;mapData[i]=mapData[i+1]=mapData[i+2]=255;mapData[i+3]=Math.max(0,1-r*r)*255;}
     const map=new THREE.DataTexture(mapData,32,32);map.needsUpdate=true;const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(p,3));this.snowTime={value:0};
-    const material=new THREE.PointsMaterial({color:0xffffff,size:.14,map,transparent:true,opacity:.8,depthWrite:false});material.onBeforeCompile=shader=>{shader.uniforms.snowTime=this.snowTime;shader.vertexShader='uniform float snowTime;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.y=mod(position.y-snowTime*3.,90.);transformed.x=mod(position.x+snowTime*1.6+sin(snowTime*.7+position.y)*2.+65.,130.)-65.;');};material.customProgramCacheKey=()=> 'alpine-snowfall-v3';
+    const material=new THREE.PointsMaterial({color:0xffffff,size:.2,map,transparent:true,opacity:.88,depthWrite:false});material.onBeforeCompile=shader=>{shader.uniforms.snowTime=this.snowTime;shader.vertexShader='uniform float snowTime;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.y=mod(position.y-snowTime*4.2,110.);transformed.x=mod(position.x+snowTime*1.8+sin(snowTime*.7+position.y)*2.+75.,150.)-75.;');};material.customProgramCacheKey=()=> 'alpine-snowfall-v3';
     this.snow=new THREE.Points(geo,material);this.snow.visible=false;this.snow.frustumCulled=false;this.scene.add(this.snow);
+  }
+  makeFlare(){
+    const data=new Uint8Array(64*64*4);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,r=Math.hypot(x-31.5,y-31.5)/32,a=Math.max(0,1-r*r);data[i]=255;data[i+1]=244;data[i+2]=210;data[i+3]=Math.round(a*255);}
+    const map=new THREE.DataTexture(data,64,64);map.needsUpdate=true;
+    this.flare=new THREE.Sprite(new THREE.SpriteMaterial({map,color:0xfff3d0,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0}));
+    this.flare.scale.set(120,120,1);this.flare.visible=false;this.scene.add(this.flare);
+  }
+  updateFlare(){
+    if(!this.flare)return;
+    const dir=this.environment?.uniforms?.sunDir?.value||{x:-.5,y:.7,z:-.4};
+    this.flare.position.set(this.camera.position.x+dir.x*420,this.camera.position.y+dir.y*420,this.camera.position.z+dir.z*420);
+    const ndc=this.flare.position.clone().project(this.camera);
+    const on=ndc.z<1&&ndc.x>-1.2&&ndc.x<1.2&&ndc.y>-1.2&&ndc.y<1.2&&this.quality!=='low'&&this.weather!=='snow';
+    const cover=this.environment?.uniforms?.cloudCover?.value||0;
+    this.flare.visible=on;this.flare.material.opacity=on?Math.max(0,.62-cover*.45)*(1-Math.min(1,Math.hypot(ndc.x,ndc.y)*.35)):0;
+    const glow=22+48*this.flare.material.opacity;this.flare.scale.set(glow,glow*(.72+cover*.15),1);
   }
   makeLabels(){
     const root=document.getElementById('labels');this.labels=this.data.villages.map(v=>{const el=document.createElement('div');el.className='map-label';const dot=document.createElement('i'),name=document.createElement('span'),alt=document.createElement('small');name.textContent=v.name.toUpperCase();alt.textContent=v.alt.toLocaleString('en')+' m';el.append(dot,name,alt);root.appendChild(el);return{el,p:new THREE.Vector3(v.position[0],this.height(...v.position)+170,v.position[1])};});
@@ -176,9 +192,9 @@ export class MountainWorld{
       }
     }
   }
-  startRide(discipline='challenge',ghost=null){this.character.initialized=this.ghostCharacter.initialized=false;this.character.state.clock=this.ghostCharacter.state.clock=0;this.discipline=discipline;this.ghostRecord=ghost;this.selectedGroup.visible=discipline!=='explore';this.sceneryTimer=0;this.mode='ride';this.skier.visible=true;this.blob.visible=true;this.gateGroup.visible=discipline!=='explore';this.pistes.visible=false;this.routeLine.visible=false;this.selectedGroup.children.slice(2).forEach(m=>m.visible=false);this.sun.castShadow=true;this.fx.reset();this.ghost.visible=false;this.snapCamera=true;this.path.gates.forEach(g=>{g.passed=g.hit=false;g.mesh.visible=discipline==='challenge';});this.terrain.timer=0;this.setWeather(this.weather);}
-  stopRide(){this.mode='overview';this.selectedGroup.visible=true;if(this.travelCabin)this.travelCabin.visible=false;this.sceneryTimer=0;this.ghost.visible=false;this.skier.visible=this.blob.visible=this.gateGroup.visible=false;this.pistes.visible=this.options.pistes;this.routeLine.visible=true;this.selectedGroup.children.slice(2).forEach(m=>m.visible=true);this.sun.castShadow=false;this.spray.visible=false;this.sun.position.set(-12000,17000,-7000);this.sun.target.position.set(0,0,0);this.fx.reset();this.setWeather(this.weather);this.updateOverview(true);}
-  setWeather(value){this.weather=['clear','golden','snow','overcast'].includes(value)?value:'clear';}
+  startRide(discipline='challenge',ghost=null){this.character.initialized=this.ghostCharacter.initialized=false;this.character.state.clock=this.ghostCharacter.state.clock=0;this.discipline=discipline;this.ghostRecord=ghost;this.selectedGroup.visible=discipline!=='explore';this.sceneryTimer=0;this.mode='ride';this.skier.visible=true;this.blob.visible=true;this.gateGroup.visible=discipline!=='explore';this.pistes.visible=false;this.routeLine.visible=false;this.selectedGroup.children.slice(2).forEach(m=>m.visible=false);this.sun.castShadow=true;this.fx.reset();this.ghost.visible=false;this.snapCamera=true;this.makeCollectibles(this.path);this.path.gates.forEach(g=>{g.passed=g.hit=false;g.mesh.visible=discipline==='challenge';});this.terrain.timer=0;this.setWeather(this.weather);}
+  stopRide(){this.mode='overview';this.selectedGroup.visible=true;if(this.travelCabin)this.travelCabin.visible=false;this.sceneryTimer=0;this.ghost.visible=false;this.skier.visible=this.blob.visible=this.gateGroup.visible=false;this.pistes.visible=this.options.pistes;this.routeLine.visible=true;this.selectedGroup.children.slice(2).forEach(m=>m.visible=true);this.sun.castShadow=false;this.spray.visible=false;this.sun.position.set(-12000,17000,-7000);this.sun.target.position.set(0,0,0);this.fx.reset();this.clearCollectibles();this.setWeather(this.weather);this.updateOverview(true);}
+  setWeather(value){this.weather=['clear','golden','snow','overcast'].includes(value)?value:'clear';if(this.weatherLive==null&&typeof document!=='undefined'&&document.getElementById){const label=document.getElementById('weatherLabel');if(label)label.textContent={clear:'Bluebird day',golden:'Golden hour',snow:'Snowfall',overcast:'Overcast'}[this.weather];const icon=document.querySelector('.weather-icon');if(icon)icon.textContent={clear:'☀',golden:'☀',snow:'❄',overcast:'☁'}[this.weather];}}
   setQuality(q){this.quality=q;this.character?.setQuality(q==='low');this.adaptive?.reset();this.sceneryTimer=0;this.terrain.quality=q;this.terrain.timer=0;const ratio=Math.min(devicePixelRatio,q==='auto'?this.adaptive.maxRatio:q==='high'?2:q==='low'?1:1.5);this.renderer.setPixelRatio(ratio);if(this.adaptive)this.adaptive.ratio=ratio;this.sun.shadow.mapSize.set(q==='high'?4096:2048,q==='high'?4096:2048);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}this.renderer.shadowMap.enabled=q!=='low';}
   updateOverview(snap=false,dt=1/60){const {yaw,pitch,distance}=this.orbit;this.cameraPosition.set(this.target.x+Math.sin(yaw)*Math.cos(pitch)*distance,this.target.y+Math.sin(pitch)*distance,this.target.z-Math.cos(yaw)*Math.cos(pitch)*distance);this.camera.position.lerp(this.cameraPosition,snap?1:1-Math.exp(-dt*4.3));this.camera.lookAt(this.target);this.camera.fov=43;this.camera.near=3;this.camera.updateProjectionMatrix();}
   updateRide(run,input,dt,time){
@@ -188,24 +204,45 @@ export class MountainWorld{
     const forward=this.rideVectors[0].set(Math.sin(heading),-Math.tan(run.started?run.grade*Math.PI/180:Math.atan(p.slope)),Math.cos(heading)).normalize(),position=this.rideVectors[1].set(p.x,p.y+.10+(run.airY||0),p.z);
     this.skier.position.copy(position);this.skier.lookAt(this.rideVectors[3].copy(position).add(forward));if(!run.liftRide)this.character.update(run,input,dt,time,run.airborne||run.crashed>0?null:this.height,this.options.motion??.35);p.skiContacts=this.character.worldContacts;
     this.blob.position.set(p.x,p.y+.07,p.z);this.blob.rotation.set(-Math.PI/2,0,-heading);this.blob.visible=!run.liftRide&&!run.airborne;
-    const air=run.airborne?Math.min(1,(run.airTime||0)/.55):0;
-    const behind=this.rideCamera?0:8.2+air*3.4,above=this.rideCamera?(run.liftRide?1.7:clamp(this.character.bones.head.matrixWorld.elements[13]-position.y+.03,.9,1.8)):3.35+air*1.7;
+    const air=run.airborne?Math.min(1,(run.airTime||0)/.55):0,fp=this.rideCamera===1,face=this.rideCamera===2;
+    const behind=fp?0:face?-3.8:8.2+air*3.4,above=fp?(run.liftRide?1.7:clamp(this.character.bones.head.matrixWorld.elements[13]-position.y+.03,.9,1.8)):face?1.55:3.35+air*1.7;
     const routeForward=this.rideVectors[2].set(Math.sin(travel),-p.slope,Math.cos(travel)).normalize();
-    this.cameraPosition.copy(position).addScaledVector(routeForward,-behind);this.cameraPosition.y=Math.max(this.cameraPosition.y+above,this.height(this.cameraPosition.x,this.cameraPosition.z)+(this.rideCamera?.9:1.9));this.cameraPosition.y+=feedback.bob;
-    const ahead=run.openWorld?{x:p.x+Math.sin(travel)*(this.rideCamera?20:16),z:p.z+Math.cos(travel)*(this.rideCamera?20:16),y:run.liftRide||run.airborne?p.y:this.height(p.x+Math.sin(travel)*(this.rideCamera?20:16),p.z+Math.cos(travel)*(this.rideCamera?20:16))}:this.path.sample(Math.min(this.path.length,run.distance+(this.rideCamera?30:22)),run.offset*.7);
-    this.cameraTarget.set(ahead.x,ahead.y+(this.rideCamera?1.3:2.45),ahead.z);
+    this.cameraPosition.copy(position).addScaledVector(routeForward,-behind);
+    if(face)this.cameraPosition.x+=Math.cos(travel)*1.55,this.cameraPosition.z-=Math.sin(travel)*1.55;
+    this.cameraPosition.y=Math.max(this.cameraPosition.y+above,this.height(this.cameraPosition.x,this.cameraPosition.z)+(fp?.9:1.9));this.cameraPosition.y+=feedback.bob;
+    this.cameraPosition.x+=(feedback.shake||0)*Math.sin(time*53);this.cameraPosition.z+=(feedback.shake||0)*.7*Math.cos(time*47);
+    const look=fp?20:face?0:16,lookY=fp?1.3:face?1.48:2.45;
+    const ahead=face?{x:position.x,y:position.y,z:position.z}:run.openWorld?{x:p.x+Math.sin(travel)*look,z:p.z+Math.cos(travel)*look,y:run.liftRide||run.airborne?p.y:this.height(p.x+Math.sin(travel)*look,p.z+Math.cos(travel)*look)}:this.path.sample(Math.min(this.path.length,run.distance+(fp?30:22)),run.offset*.7);
+    this.cameraTarget.set(ahead.x,ahead.y+lookY,ahead.z);
     this.camera.position.lerp(this.cameraPosition,this.snapCamera?1:1-Math.exp(-dt*8));
     // Protect the camera during a convex roll or a tight bend.
     this.camera.position.y=Math.max(this.camera.position.y,this.height(this.camera.position.x,this.camera.position.z)+.8);
     if(this.snapCamera)this.smoothedLook=this.cameraTarget.clone();this.smoothedLook.lerp(this.cameraTarget,1-Math.exp(-dt*10));this.camera.lookAt(this.smoothedLook);this.camera.rotateZ(feedback.roll);
-    const fov=(this.rideCamera?74:57)+Math.min(16,run.speed*.38);this.camera.fov=this.snapCamera?fov:lerp(this.camera.fov,fov,1-Math.exp(-dt*3));this.camera.near=.08;this.camera.updateProjectionMatrix();this.snapCamera=false;this.skier.visible=this.rideCamera===0&&!run.liftRide;if(this.travelCabin){this.travelCabin.visible=!!run.liftRide&&this.rideCamera===0;this.travelCabin.position.copy(position);this.travelCabin.rotation.y=run.heading;this.travelGondola.visible=!!run.liftRide?.lift.gondola;this.travelChair.visible=!run.liftRide?.lift.gondola;}this.blob.visible=!run.liftRide&&!run.airborne;
+    const fov=(this.rideCamera?74:57)+Math.min(16,run.speed*.38);this.camera.fov=this.snapCamera?fov:lerp(this.camera.fov,fov,1-Math.exp(-dt*3));this.camera.near=.08;this.camera.updateProjectionMatrix();this.snapCamera=false;this.skier.visible=this.rideCamera!==1&&!run.liftRide;if(this.travelCabin){this.travelCabin.visible=!!run.liftRide&&this.rideCamera!==1;this.travelCabin.position.copy(position);this.travelCabin.rotation.y=run.heading;this.travelGondola.visible=!!run.liftRide?.lift.gondola;this.travelChair.visible=!run.liftRide?.lift.gondola;}this.blob.visible=!run.liftRide&&!run.airborne;
     const sun=this.environment?.sunOffset||{x:-160,y:220,z:-130};this.sun.position.set(p.x+sun.x,p.y+sun.y,p.z+sun.z);this.sun.target.position.copy(position);this.sun.target.updateMatrixWorld();
     this.fx.update(p,run,input,run.liftRide?0:dt,time,(this.container?.clientHeight||900)*(this.renderer.getPixelRatio?.()||1));
-    if(this.snow.visible){this.snow.position.set(p.x,p.y-10,p.z);this.snowTime.value=time;}
+    if(this.snow.visible){this.snow.position.set(p.x,p.y-10,p.z);this.snowTime.value=time;}this.collectPickups(run,dt);
     const ghost=this.options.ghost?ghostAt(this.ghostRecord,run.time):null;this.ghost.visible=false;
     if(ghost){const q=this.path.sample(ghost.distance,ghost.offset),gap=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);if(gap>2.5&&gap<220){this.ghost.visible=true;this.ghost.position.set(q.x,q.y+.10,q.z);this.ghost.lookAt(q.x+q.tx,q.y+.1-q.slope,q.z+q.tz);const next=ghostAt(this.ghostRecord,run.time+.1)||ghost,speed=Math.max(0,(next.distance-ghost.distance)/.1);this.ghostCharacter.update({...ghost,speed,walking:false},{tuck:speed>10},dt,time,this.height,0);}}
   }
 
-  render(run,input,dt,time,frameDt=dt){if(this.mode==='overview'){this.updateOverview(false,dt);const w=this.container.clientWidth,h=this.container.clientHeight;for(const l of this.labels){const p=l.p.clone().project(this.camera);l.el.style.transform=`translate(${(p.x*.5+.5)*w}px,${(-p.y*.5+.5)*h}px) translate(-50%,-50%)`;l.el.style.display=p.z<1&&p.x>-1&&p.x<1&&p.y>-1&&p.y<1?'flex':'none';}}else if(run)this.updateRide(run,input,dt,time);if(this.furniture)this.furniture.visible=this.mode==='ride';this.terrain.update(this.camera,this.mode==='ride',dt,this.container.clientHeight*this.renderer.getPixelRatio());this.updateScenery(dt,time);this.life?.update(dt);this.environment?.update(dt);if(frameDt>0&&frameDt<=1.5)this.frameMS=lerp(this.frameMS??16.7,frameDt*1000,1-Math.exp(-frameDt*2));if(this.quality==='auto'&&this.adaptive){const ratio=this.adaptive.update(frameDt);if(ratio!==null)this.renderer.setPixelRatio(ratio);}this.renderer.render(this.scene,this.camera);}
+  render(run,input,dt,time,frameDt=dt){if(this.mode==='overview'){this.updateOverview(false,dt);const w=this.container.clientWidth,h=this.container.clientHeight;for(const l of this.labels){const p=l.p.clone().project(this.camera);l.el.style.transform=`translate(${(p.x*.5+.5)*w}px,${(-p.y*.5+.5)*h}px) translate(-50%,-50%)`;l.el.style.display=p.z<1&&p.x>-1&&p.x<1&&p.y>-1&&p.y<1?'flex':'none';}}else if(run)this.updateRide(run,input,dt,time);if(this.furniture)this.furniture.visible=this.mode==='ride';this.terrain.update(this.camera,this.mode==='ride',dt,this.container.clientHeight*this.renderer.getPixelRatio());this.updateScenery(dt,time);this.life?.update(dt);this.environment?.update(dt);if(frameDt>0&&frameDt<=1.5)this.frameMS=lerp(this.frameMS??16.7,frameDt*1000,1-Math.exp(-frameDt*2));if(this.quality==='auto'&&this.adaptive){const ratio=this.adaptive.update(frameDt);if(ratio!==null)this.renderer.setPixelRatio(ratio);}this.updateFlare();this.renderer.render(this.scene,this.camera);}
+  makeCollectibles(path){
+    this.clearCollectibles();if(!path)return;
+    this.pickupGroup=new THREE.Group();this.pickupGroup.name='Piste stars';this.scene.add(this.pickupGroup);
+    const geo=new THREE.OctahedronGeometry(.42,0),mat=new THREE.MeshStandardMaterial({color:0xffe082,emissive:0xc9a227,emissiveIntensity:.6,roughness:.32,metalness:.35});
+    this.pickups=[];
+    for(let d=80,i=0;d<path.length-40;d+=170,i++){
+      const p=path.sample(d,(i%2?1:-1)*Math.min(3.2,path.halfWidth*.22));
+      const mesh=new THREE.Mesh(geo,mat);mesh.position.set(p.x,p.y+1.2,p.z);this.pickupGroup.add(mesh);this.pickups.push({mesh,taken:false});
+    }
+  }
+  clearCollectibles(){if(this.pickupGroup){this.clearGroup(this.pickupGroup);this.scene.remove(this.pickupGroup);}this.pickupGroup=null;this.pickups=[];}
+  collectPickups(run,dt){
+    if(!this.pickups||!run||run.liftRide)return;run.collects=run.collects||0;
+    const p=run.openWorld?run.position:this.path?this.path.sample(run.distance,run.offset):null;if(!p)return;
+    for(const token of this.pickups){if(token.taken)continue;token.mesh.rotation.y+=(dt||0)*2.4;if(Math.hypot(token.mesh.position.x-p.x,token.mesh.position.z-p.z)<2.5){token.taken=true;token.mesh.visible=false;run.collects++;}}
+  }
   resize(){const w=this.container.clientWidth,h=this.container.clientHeight;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);}
 }
+

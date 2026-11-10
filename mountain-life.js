@@ -10,7 +10,7 @@ export class MountainLife{
   const kits=Object.keys(SUIT_KITS).filter(k=>k!=='hero');
   this.actors=[];for(let i=0;i<10;i++){const skier=new Skier({kit:kits[i%kits.length]});skier.root.visible=false;skier.mesh.castShadow=false;world.scene.add(skier.root);this.actors.push(skier);}this.bodies=new THREE.InstancedMesh(new THREE.BoxGeometry(.1,.1,.1),new THREE.MeshBasicMaterial({visible:false}),16);this.bodies.count=0;this.bodies.visible=false;this.bodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.pose=new THREE.Object3D();
   this.population=[];const rand=seededRandom(708);
-  for(const line of this.lines)for(let i=0;i<3;i++)this.population.push({line,phase:rand()*line.length,speed:4+rand()*7,offset:(rand()-.5)*Math.min(8,pisteWidth(line.route)*.6),color:rand(),kit:kits[(this.population.length)%kits.length]});
+  for(const line of this.lines){const starts=[30+rand()*40,110+rand()*70,220+rand()*90,rand()*Math.max(80,line.length*.7)];for(const phase of starts)this.population.push({line,phase:phase%line.length,speed:4+rand()*7,offset:(rand()-.5)*Math.min(8,pisteWidth(line.route)*.6),color:rand(),kit:kits[(this.population.length)%kits.length]});}
   this.makeBashers(rand);
  }
  makeBashers(rand){
@@ -65,7 +65,7 @@ export class MountainLife{
   this.crowdDue=(this.crowdDue||0)-dt;if(this.crowdDue>0&&dt!==0){/* still keep visible actors this frame */ }else this.crowdDue=w.options.mobile?1/20:1/24;
   if(this.crowdDue<=1/20||dt===0){
    const budget=Math.min(this.actors.length,w.quality==='low'?6:w.options.mobile?8:10),candidates=[];
-   for(const a of this.population){const d=(a.phase+this.clock*a.speed)%a.line.length,q=lineAt(a.line,d),distance=Math.hypot(q.x-p.x,q.z-p.z);if(distance<520&&d>20&&d<a.line.length-20)candidates.push({a,q,distance,d});}
+   for(const a of this.population){const d=(a.phase+this.clock*a.speed)%a.line.length,q=lineAt(a.line,d),distance=Math.hypot(q.x-p.x,q.z-p.z);if(distance<1100&&d>6&&d<a.line.length-12)candidates.push({a,q,distance,d});}
    candidates.sort((a,b)=>a.distance-b.distance);let count=0;
    for(const {a,q,d}of candidates){if(count>=budget)break;const turn=Math.sin(this.clock*.65+a.phase)*.8,offset=a.offset+turn,x=q.x-Math.cos(q.heading)*offset,z=q.z+Math.sin(q.heading)*offset;
     if(Math.hypot(x-w.skier.position.x,z-w.skier.position.z)<7)continue;

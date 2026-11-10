@@ -41,7 +41,7 @@ export function makeForests(world){
     if(y>=1300&&y<=2080&&!world.nearPiste(x,z,16)&&Math.abs(world.height(x+8,z)-y)<=8){
       const ang=r*Math.PI*6,spread=7+r*6,nx=x+Math.sin(ang)*spread,nz=z+Math.cos(ang)*spread,ny=world.height(nx,nz);
       if(Math.abs(ny-y)<6&&!world.nearPiste(nx,nz,14))trees.push([nx,nz,ny,h*(.85+seed()*.2), (r+.37)%1]);
-      if(y<1850&&seed()>.45){const bx=x-Math.cos(ang)*10,bz=z+Math.sin(ang)*10,by=world.height(bx,bz);if(Math.abs(by-y)<6&&!world.nearPiste(bx,bz,14))trees.push([bx,bz,by,h*(.8+seed()*.25),(r+.61)%1]);}
+      if(y<1900&&seed()>.28){const bx=x-Math.cos(ang)*10,bz=z+Math.sin(ang)*10,by=world.height(bx,bz);if(Math.abs(by-y)<6&&!world.nearPiste(bx,bz,14))trees.push([bx,bz,by,h*(.8+seed()*.25),(r+.61)%1]);}
     }
   }
   world.treeObstacles=trees;
@@ -85,8 +85,10 @@ export function makeVillages(world){
     for(const mesh of [box,roof,chimneys]){mesh.receiveShadow=true;if(mesh.isInstancedMesh)mesh.computeBoundingSphere();freeze(mesh);group.add(mesh);}group.visible=false;world.buildings.add(group);world.buildingChunks.push({...chunk,refs:chunk.items.map(p=>p[5]),items:undefined,group,box,roof,chimneys,detailed:false});
   }
   const landmarks=new THREE.Group();landmarks.name='Village landmarks';
-  const naveMat=new THREE.MeshStandardMaterial({color:0xc9c2b4,roughness:.9}),stoneMat=new THREE.MeshStandardMaterial({color:0x8a8680,roughness:.85}),spireMat=new THREE.MeshStandardMaterial({color:0x5a4e42,roughness:.7}),snowRoof=roofSnowMaterial(world.environment?.uniforms);
+  const snowRoof=roofSnowMaterial(world.environment?.uniforms);
+  const villageLook=name=>{const n=(name||'').toLowerCase();return n.includes('chantemerle')?{nave:0xc99a62,stone:0x7a4a2c,spire:0x5a3420}:n.includes('villeneuve')?{nave:0xe8e2d4,stone:0xb8c2c8,spire:0x6a6662}:n.includes('monêtier')||n.includes('monetier')?{nave:0x746c62,stone:0x4a4440,spire:0x322e2a}:{nave:0xc9c2b4,stone:0x8a8680,spire:0x5a4e42};};
   for(const v of world.data.villages||[]){
+    const pal=villageLook(v.name),naveMat=new THREE.MeshStandardMaterial({color:pal.nave,roughness:.9}),stoneMat=new THREE.MeshStandardMaterial({color:pal.stone,roughness:.85}),spireMat=new THREE.MeshStandardMaterial({color:pal.spire,roughness:.7});
     const [x,z]=v.position,y=world.height(x,z),g=new THREE.Group();
     const nave=new THREE.Mesh(new THREE.BoxGeometry(9,6,16),naveMat);nave.position.set(x,y+3,z);
     const apse=new THREE.Mesh(new THREE.BoxGeometry(7,5,6),naveMat);apse.position.set(x,y+2.6,z+10);
@@ -207,11 +209,11 @@ export function updateScenery(world,dt,time=0){
   world.sceneryTimer=(world.sceneryTimer??0)-dt;
   if(world.sceneryTimer<=0){
     world.sceneryTimer=.25;const ride=world.mode==='ride',position=world.camera.position;
-    if(world.trees)world.trees.visible=world.options.trees!==false&&(ride||(world.orbit?.distance??2e4)<5200);
-    for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?460:world.quality==='low'?180:300)+(c.detailed?80:0);const detailed=ride&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
+    const zoom=world.orbit?.distance??2e4;if(world.trees)world.trees.visible=world.options.trees!==false&&(ride||zoom<13000);
+    for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?720:world.quality==='low'?200:420)+(c.detailed?90:0);const detailed=(ride||zoom<4000)&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
     for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),detailed=ride&&d<(c.detailed?860:720);if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<450;c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220;}
     for(const c of world.liftChunks??[]){const near=ride&&distanceTo(c,position)<220;for(const mesh of c.group.children)mesh.castShadow=near;}
-    for(const r of world.liftRuns??[]){r.group.visible=world.options.lifts&&ride&&r.box.distanceToPoint(position)<2100;for(const mesh of r.group.children)mesh.castShadow=r.box.distanceToPoint(position)<180;}
+    for(const r of world.liftRuns??[]){r.group.visible=world.options.lifts&&(ride||zoom<8000)&&r.box.distanceToPoint(position)<3200;for(const mesh of r.group.children)mesh.castShadow=r.box.distanceToPoint(position)<180;}
   }
   for(const r of world.liftRuns??[])if(r.group.visible&&dt>0)placeCarriers(r,time);
 }

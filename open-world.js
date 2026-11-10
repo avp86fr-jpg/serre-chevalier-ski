@@ -40,9 +40,9 @@ function step(run,input,dt,events){
    const impact=Math.max(0,-run.vy),pitchErr=Math.abs(Math.atan(slope)-Math.atan(-run.vy/Math.max(.2,run.velocity)));
    const ugly=impact>8.2||spinErr>1.15||pitchErr>1.05||run.airTime<.08&&impact>5.5;
    const quality=clamp(1-impact/9-spinErr/2.2-pitchErr/1.6,0,1);
-   run.position={x:q.x,y:ground,z:q.z};run.airborne=false;run.vy=0;run.spin=0;run.grab='';run.nearPiste=domain.locate(q.x,q.z);
-   if(ugly){run.crashed=1.7;run.velocity=Math.min(run.velocity*.2,3);run.landing='crash';run.combo=0;events.push({type:'crash',quality,impact,airTime:run.airTime});}
-   else {run.velocity=Math.max(3,run.velocity*(.86+.1*quality)-impact*.35);run.landing=quality>.72?'clean':quality>.4?'heavy':'sketchy';if(run.airTime>.18){run.tricks++;run.combo++;run.score+=Math.round(40+run.airTime*80+quality*60);}events.push({type:'landing',quality,style:run.landing,airTime:run.airTime,impact});}
+   const grab=run.grab,spin=run.spin;run.position={x:q.x,y:ground,z:q.z};run.airborne=false;run.vy=0;run.spin=0;run.grab='';run.nearPiste=domain.locate(q.x,q.z);
+   if(ugly){run.crashed=1.7;run.velocity=Math.min(run.velocity*.2,3);run.landing='crash';run.combo=0;events.push({type:'crash',quality,impact,airTime:run.airTime,grab,spin});}
+   else {run.velocity=Math.max(3,run.velocity*(.86+.1*quality)-impact*.35);run.landing=quality>.72?'clean':quality>.4?'heavy':'sketchy';if(run.airTime>.18){run.tricks++;run.combo++;run.score+=Math.round(40+run.airTime*80+quality*60);}events.push({type:'landing',quality,style:run.landing,airTime:run.airTime,impact,grab,spin});}
    run.speed=run.velocity;run.airTime=0;run.grade=Math.atan(slope)*180/Math.PI;run.started=true;return;
   }
   const actual=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);run.position=q;run.speed=actual/dt;run.totalDistance+=actual;run.distance=run.totalDistance;run.vertical+=Math.max(0,p.y-q.y);run.maxSpeed=Math.max(run.maxSpeed,run.speed);run.grade=Math.atan2(-run.vy,run.velocity)*180/Math.PI;run.started=true;return;

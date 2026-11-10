@@ -47,7 +47,7 @@ export class AlpineEnvironment{
   if(this.drift.visible){const x=w.skier.position.x,z=w.skier.position.z,cx=Math.round(x/16)*16,cz=Math.round(z/16)*16;
    if(!this.groundCenter||cx!==this.groundCenter.x||cz!==this.groundCenter.z){this.groundCenter={x:cx,z:cz};for(let j=0;j<17;j++)for(let i=0;i<17;i++){const v=clamp(Math.round(w.height(cx-64+i*8,cz-64+j*8)*10),0,65535),k=(j*17+i)*4;this.groundData[k]=v>>8;this.groundData[k+1]=v&255;this.groundData[k+3]=255;}this.groundTexture.needsUpdate=true;this.drift.material.uniforms.groundOrigin.value.set(cx-64,cz-64);}
    this.drift.material.uniforms.driftOrigin.value.set(x,.25,z);this.drift.material.uniforms.pixelHeight.value=(w.container?.clientHeight||900)*(w.renderer.getPixelRatio?.()||1);}
-  if(w.snow){w.snow.visible=w.weather==='snow'&&w.mode==='ride';if(w.snowTime)w.snowTime.value=this.time;}
+  if(w.snow){const flakes=w.weather==='snow'||w.weather==='overcast';w.snow.visible=flakes&&w.mode==='ride';if(w.snow.material)w.snow.material.opacity=w.weather==='snow'?.88:.38;if(w.snowTime)w.snowTime.value=this.time;}
  }
 }
 export function windMaterial(material,uniforms){

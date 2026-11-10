@@ -15,6 +15,18 @@ const held=key=>keys.has(key)||touch?.has(key);
 const keys=new Set(),input={left:false,right:false,brake:false,tuck:false};
 const km=n=>(n/1000).toFixed(1)+' km';
 const safeStorage={get(k){try{return localStorage.getItem(k);}catch{return null;}},set(k,v){try{localStorage.setItem(k,v);return true;}catch{return false;}},remove(k){try{localStorage.removeItem(k);}catch{}}};
+
+const TUTORIAL_STEPS=['Steer with A / D or your left thumb. You are looking down the chosen piste.','Hold W or the push/tuck control to gain speed. S or Space brakes.','Stay on the corduroy for grip, or drop a shoulder into the powder for spray.','Collect the gold stars. In Gate challenge, thread the poles. C cycles cameras, including a goggles view.','Your best time leaves a ghost on the next run. Finish a piste for gold, silver or bronze.'];
+let tutorialStep=0,lastCollectHud=0;
+function hideTutorial(){const card=$('tutorialCard');if(card)card.hidden=true;}
+function showTutorial(){const card=$('tutorialCard');if(!card)return;card.hidden=false;$('tutorialText').textContent=TUTORIAL_STEPS[tutorialStep];$('tutorialNext').textContent=tutorialStep===TUTORIAL_STEPS.length-1?'Got it ↗':'Next ↗';}
+function maybeStartTutorial(){if(safeStorage.get('alpine-tutorial-done')||new URLSearchParams(location.search).get('play')==='1'){hideTutorial();return;}tutorialStep=0;showTutorial();}
+function advanceTutorial(){tutorialStep++;if(tutorialStep>=TUTORIAL_STEPS.length)skipTutorial();else showTutorial();}
+function skipTutorial(){safeStorage.set('alpine-tutorial-done','1');hideTutorial();}
+function pistePar(path){const drop=Math.max(40,path.at(0).y-path.at(path.length).y);return drop/12.5;}
+function pisteMedal(run,path){const t=resultTime(run),par=pistePar(path);return t<=par*.85?'Gold':t<=par*1.05?'Silver':t<=par*1.35?'Bronze':'';}
+function awardMedal(run,path){const el=$('finishMedal');if(!el||!path){if(el)el.hidden=true;return;}const medal=pisteMedal(run,path);if(!medal){el.hidden=true;el.textContent='';return;}const key='alpine-medals';let store={};try{store=JSON.parse(safeStorage.get(key)||'{}')||{};}catch(e){store={};}const id=(selected?.id||path.id||'piste')+'|'+discipline,rank={Gold:3,Silver:2,Bronze:1};if((rank[medal]||0)>=(rank[store[id]]||0)){store[id]=medal;safeStorage.set(key,JSON.stringify(store));}el.hidden=false;el.textContent=(store[id]||medal)+' medal · '+clock(resultTime(run));}
+function updateTokenHud(){const el=$('tokenCount');if(!el||!run)return;const n=run.collects||0;el.textContent=String(n);if(n>lastCollectHud){$('gateToast').style.fontSize='18px';$('gateToast').textContent='STAR  '+n; $('gateToast').style.color='#ffe082';$('gateToast').style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>$('gateToast').style.opacity=0,700);}lastCollectHud=n;}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3200);}
 function selectedText(r){return r.name+(r.sections>1?' · section '+r.section:'');}
 function listRoutes(){
@@ -39,21 +51,23 @@ function startRide(){
   if(!world||!path)return;for(const id of ['finishDialog','pauseDialog'])if($(id).open)$(id).close();
   run=discipline==='explore'?newExplore(world.domain,path.at(0),path.sample(0).heading):newRun(path,discipline);recorder=run.openWorld?null:makeRecorder();exploreMapCache=null;refreshBest();prepareMap();countdown=run.openWorld?0:2.4;lastCountdown=-1;mode='ride';paused=false;clearKeys();world.startRide(discipline,best);setActiveMode(true);hudDue=0;
   $('raceStrip').dataset.discipline=discipline;$('rideName').textContent=selectedText(selected);$('rideSector').textContent=selected.sector.toUpperCase();$('rideGrade').className='dot '+(DIFFICULTIES[selected.difficulty]?.className||'blue');$('gateToast').textContent='';$('gateToast').style.opacity=0;updateHud();
-  toast(run.openWorld?'Turn freely. Follow pistes or explore. Map & travel opens the whole mountain.':touchLayout()?'Left thumb to carve · Right thumb to brake or push/tuck.':discipline==='challenge'?'Carve through the gates. Missed gate: +2 seconds.':'Free descent. Hold W to push or tuck; S to brake.');
+  lastCollectHud=run.collects||0;maybeStartTutorial();
+  toast(run.openWorld?'Turn freely. Follow pistes or explore. Map & travel opens the whole mountain.':touchLayout()?'Left thumb to carve · Right thumb to brake or push/tuck.':discipline==='challenge'?'Carve through the gates. Missed gate: +2 seconds. Collect the gold stars.':'Free descent. Hold W to push or tuck; S to brake. Collect the gold stars.');
 }
 function exitRide(){
-  if(!world)return;for(const id of ['pauseDialog','finishDialog'])if($(id).open)$(id).close();mode='overview';paused=false;clearKeys();world.stopRide();setActiveMode(false);run=null;
+  if(!world)return;for(const id of ['pauseDialog','finishDialog'])if($(id).open)$(id).close();mode='overview';paused=false;clearKeys();world.stopRide();setActiveMode(false);hideTutorial();run=null;
 }
 function pauseRide(reason='Your descent is paused.'){if(mode!=='ride'||!run||run.completed||paused)return;paused=true;clearKeys();$('pauseReason').textContent=typeof reason==='string'?reason:'Your descent is paused.';$('pauseDialog').showModal();}
 function resumeRide(){if($('pauseDialog').open)$('pauseDialog').close();paused=false;clearKeys();lastTime=performance.now();}
-function toggleCamera(){if(!world)return;world.rideCamera=world.rideCamera?0:1;world.snapCamera=true;toast(world.rideCamera?'First-person camera':'Follow camera');}
+function toggleCamera(){if(!world)return;world.rideCamera=(world.rideCamera+1)%3;world.snapCamera=true;toast(['Follow camera','First-person camera','Goggles camera'][world.rideCamera]);}
 function refreshBest(){
   $('startBtn').querySelector('span').textContent=discipline==='explore'?'Explore mountain':'Start descent';if(discipline==='explore'){best=null;$('bestPreview').textContent='Turn freely · Explore junctions · Ride the lifts';return;}if(!path)return;best=readBest(safeStorage,path,selected.id,discipline);$('bestPreview').textContent=best?'Personal best '+clock(best.result)+(best.samples.length?' · ghost ready':''):discipline==='challenge'?'Clean gates. Build your combo. Beat your time.':'Find your rhythm. Your best run becomes a ghost.';
 }
 function finish(){
   paused=true;clearKeys();$('finishRun').textContent=selectedText(selected)+' · '+(discipline==='challenge'?'Gate challenge':'Free descent');
   const stats=discipline==='challenge'?[['RESULT',clock(resultTime(run))],['GATE SCORE',run.score.toLocaleString('en')],['GATES',run.gates+' / '+path.gates.length],['BEST COMBO',run.maxCombo+'×'],['RAW TIME',clock(run.time)],['PENALTIES','+'+run.penalty+' s']]:[['TIME',clock(run.time)],['TOP SPEED',Math.round(run.maxSpeed*3.6)+' km/h'],['DISTANCE SKIED',km(run.totalDistance)],['VERTICAL',Math.max(0,Math.round(path.at(0).y-path.at(path.length).y))+' m']];
-  $('finishStats').replaceChildren();for(const [label,value] of stats){const div=document.createElement('div'),strong=document.createElement('strong'),span=document.createElement('span');strong.textContent=value;span.textContent=label;div.append(strong,span);$('finishStats').appendChild(div);}
+  if(run.collects)stats.push(['STARS',String(run.collects)]);
+  $('finishStats').replaceChildren();for(const [label,value] of stats){const div=document.createElement('div'),strong=document.createElement('strong'),span=document.createElement('span');strong.textContent=value;span.textContent=label;div.append(strong,span);$('finishStats').appendChild(div);}awardMedal(run,path);
   const result=makeResult(run,recorder,selected.id),isBest=!best||result.result<best.result;
   if(isBest){const saved=saveBest(safeStorage,result);$('personalBest').textContent=saved?(result.samples.length?'New personal best. Race your ghost on the next run.':'New personal best saved.'):'Descent finished. Browser storage could not save this run.';if(saved)best=result;}
   else $('personalBest').textContent='Personal best '+clock(best.result)+' · '+(result.result-best.result).toFixed(2)+' s to find.';
@@ -70,6 +84,7 @@ function updateHud(){
   const next=path.gates[run.nextGate];$('nextGate').hidden=discipline!=='challenge'||!next||run.completed;
   if(next)$('nextGate').textContent=(next.offset<0?'← LEFT GATE':'RIGHT GATE →')+' · '+Math.max(0,Math.round(next.distance-run.distance))+' m';
   const split=ghostSplit(best,run.distance),delta=split===null?null:resultTime(run)-split;$('ghostDelta').textContent=delta===null?'SET A BEST':(delta>0?'+':'')+delta.toFixed(2)+' s';$('ghostDelta').dataset.ahead=String(delta!==null&&delta<=0);
+  updateTokenHud();
   drawMap();
 }
 function prepareMap(){
@@ -100,7 +115,7 @@ function updateExploreHud(){
   $('remaining').textContent=km(run.totalDistance)+' explored';$('gateCount').textContent=run.visited.size+' pistes visited';$('nextGate').hidden=true;
   $('explorePlace').textContent=run.liftRide?'Enjoy the ascent':onPiste?'On piste · '+near.route.name:'Off piste · choose your direction';$('exploreSession').textContent=run.visited.size+' pistes · '+run.sectors.size+' / 4 sectors';
   nearbyLift=null;if(!run.liftRide){let distance=55;for(const lift of world.liftDestinations){const d=Math.hypot(run.position.x-lift.bottom.x,run.position.z-lift.bottom.z);if(d<distance){distance=d;nearbyLift=lift;}}}
-  $('liftBtn').hidden=!nearbyLift&&!run.liftRide;$('liftBtn').disabled=!run.liftRide&&run.speed>3;$('liftBtn').textContent=run.liftRide?'Skip to top ↗':run.speed>3?'Slow to board':nearbyLift?'Board '+nearbyLift.name:'Board lift';drawExploreMap();
+  $('liftBtn').hidden=!nearbyLift&&!run.liftRide;$('liftBtn').disabled=!run.liftRide&&run.speed>3;$('liftBtn').textContent=run.liftRide?'Skip to top ↗':run.speed>3?'Slow to board':nearbyLift?'Board '+nearbyLift.name:'Board lift';updateTokenHud();drawExploreMap();
 }
 function drawExploreMap(){
   const canvas=$('miniMap'),ctx=canvas.getContext('2d'),x=Math.round(run.position.x/160)*160,z=Math.round(run.position.z/160)*160;
@@ -149,7 +164,7 @@ function setupDisplay(){
 }
 function setupEvents(){
   setupDisplay();
-  $('startBtn').onclick=startRide;$('rideMode').onclick=()=>{if(mode==='overview')startRide();};$('mountainMode').onclick=()=>{if(mode==='ride')exitRide();};$('exitBtn').onclick=exitRide;$('pauseExit').onclick=exitRide;$('finishExit').onclick=exitRide;$('againBtn').onclick=startRide;$('restartBtn').onclick=restartRun;$('cameraBtn').onclick=toggleCamera;$('pauseBtn').onclick=pauseRide;$('resumeBtn').onclick=resumeRide;
+  if($('tutorialNext'))$('tutorialNext').onclick=advanceTutorial;if($('tutorialSkip'))$('tutorialSkip').onclick=skipTutorial;$('startBtn').onclick=startRide;$('rideMode').onclick=()=>{if(mode==='overview')startRide();};$('mountainMode').onclick=()=>{if(mode==='ride')exitRide();};$('exitBtn').onclick=exitRide;$('pauseExit').onclick=exitRide;$('finishExit').onclick=exitRide;$('againBtn').onclick=startRide;$('restartBtn').onclick=restartRun;$('cameraBtn').onclick=toggleCamera;$('pauseBtn').onclick=pauseRide;$('resumeBtn').onclick=resumeRide;
   $('pauseDialog').addEventListener('cancel',e=>{e.preventDefault();resumeRide();});$('finishDialog').addEventListener('cancel',e=>{e.preventDefault();exitRide();});
   $('settingsBtn').onclick=()=>openDialog('settingsDialog');$('helpBtn').onclick=()=>openDialog('helpDialog');
   for(const id of ['settingsDialog','helpDialog','worldMapDialog'])$(id).addEventListener('close',()=>{if(restoreAfterDialog){paused=false;lastTime=performance.now();}restoreAfterDialog=false;clearKeys();});
@@ -194,12 +209,13 @@ function animate(now){
 function airEvent(event){
   const toastEl=$('gateToast');if(!toastEl)return;
   if(event.type==='crash'){toastEl.style.fontSize='22px';toastEl.textContent='CRASH';toastEl.style.color='#f5b6a3';}
-  else {const label=event.style==='clean'?'CLEAN LANDING':event.style==='heavy'?'HEAVY LANDING':'SKETCHY LANDING';toastEl.style.fontSize='20px';toastEl.textContent=label+'  '+event.airTime.toFixed(1)+'s';toastEl.style.color=event.style==='clean'?'#e0f6a1':'#f6e2a1';}
+  else {const label=event.style==='clean'?'CLEAN LANDING':event.style==='heavy'?'HEAVY LANDING':'SKETCHY LANDING';const grab={mute:'MUTE',stalefish:'STALEFISH',safety:'SAFETY',indy:'INDY'}[event.grab]||'';const spin=Math.abs(event.spin||0),rot=spin>Math.PI*1.65?'360':spin>Math.PI*.7?'180':'';const combo=(run?.combo||0)>1?run.combo+'× COMBO':'';toastEl.style.fontSize='20px';toastEl.textContent=[label,grab,rot,event.airTime.toFixed(1)+'s',combo].filter(Boolean).join(' · ');toastEl.style.color=event.style==='clean'?'#e0f6a1':'#f6e2a1';}
   toastEl.style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>toastEl.style.opacity=0,1300);
 }
 let weatherManual=false,lastLiveWeather=null,weatherPoll=null;
 function applyLiveWeather(reading,fromCache){
-  lastLiveWeather=reading;if(weatherManual||!reading)return;
+  lastLiveWeather=reading;if(!reading)return;
+  if(weatherManual||$('weather')?.value!=='live'||(world&&world.weatherLive===null))return;
   if(world){world.setWeather(reading.preset);world.weatherLive=reading;}
   const label=$('weatherLabel');if(label)label.textContent=reading.label;
   const icon=document.querySelector('.weather-icon');if(icon)icon.textContent=reading.icon;

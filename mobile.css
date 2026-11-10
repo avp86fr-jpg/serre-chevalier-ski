@@ -204,3 +204,5 @@ html[data-compact="true"][data-orientation="landscape"] #gateToast{top:53%}
 /* v0.11 jump control */
 .speed-pad .jump-control{background:linear-gradient(160deg,rgba(255,170,90,.32),rgba(255,120,60,.18));border-color:rgba(255,190,120,.55)}
 .speed-pad .jump-control.is-held{background:rgba(255,160,80,.55)}
+
+html[data-compact="true"] .tutorial-card{left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));width:auto;transform:none;bottom:calc(var(--safe-bottom) + 210px);padding:12px 14px}
