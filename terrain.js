@@ -24,23 +24,26 @@ export function snowMaterial(texture,environment){
       float closeSnow=1.-smoothstep(16.,130.,viewDistance);
       float wind=groundNoise(vec2(vGround.x*.32+vGround.z*.13,vGround.z*.055));
       float drift=groundNoise(vGround.xz*.026)*.55+groundNoise(vGround.xz*.16)*.3+wind*.15;
-      float rock=(1.-smoothstep(.46,.77,abs(normalize(vGroundNormal).y)))*(1.-groomed*.98);
+      float slope=1.-abs(normalize(vGroundNormal).y);
+      float outcrop=smoothstep(.42,.78,groundNoise(vGround.xz*.007)+slope*.85);
+      float rock=max(1.-smoothstep(.34,.66,abs(normalize(vGroundNormal).y)),outcrop*.85)*(1.-groomed*.98);
       float strata=.5+.5*sin(vGround.y*.52+groundNoise(vGround.xz*.11)*4.);
       float fissure=pow(1.-abs(sin(vGround.y*.21+groundNoise(vGround.xy*.055)*6.)),10.);
       float lanes=snowWave(piste.y,5.4);
       float cord=snowWave(piste.y,.065)*closeSnow;
       float grain=groundNoise(vGround.xz*2.7);
-      vec3 powder=mix(vec3(.42,.62,.82),vec3(.86,.93,.99),drift);
-      powder*=.94+.06*wind;
-      vec3 groomedSnow=vec3(.94,.97,.995)*(.90+.10*lanes+.10*cord);
+      vec3 powder=mix(vec3(.38,.56,.76),vec3(.90,.95,1.),drift);
+      powder*=.93+.07*wind;
+      vec3 groomedSnow=vec3(.95,.975,1.)*(.88+.10*lanes+.12*cord);
       groomedSnow*=1.-smoothstep(.88,.99,abs(snowWave(piste.y,5.4)))*.08;
       float shoulder=exp(-pow((piste.x+.20)/max(.75,boundaryAA),2.));
       float bank=exp(-pow((piste.x+1.35)/max(.65,boundaryAA),2.));
       vec3 snow=mix(powder,groomedSnow,groomed);
       snow*=1.-shoulder*.22;snow+=vec3(.045,.05,.055)*bank;
-      vec3 stone=mix(vec3(.17,.20,.22),vec3(.39,.40,.39),strata);
-      stone*=1.-fissure*.4;
-      diffuseColor.rgb*=mix(snow,stone,rock*.94);
+      vec3 stone=mix(vec3(.16,.17,.18),vec3(.46,.44,.40),strata);
+      stone=mix(stone,vec3(.28,.24,.20),groundNoise(vGround.xz*.04));
+      stone*=1.-fissure*.45;
+      diffuseColor.rgb*=mix(snow,stone,rock*.96);
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       roughnessFactor=mix(.91,.69+lanes*.045,groomed);roughnessFactor=mix(roughnessFactor,.88,rock);`);
@@ -58,16 +61,23 @@ export function snowMaterial(texture,environment){
       normal=normalize(abs(surfaceDet)*normal-sign(surfaceDet)*(dFdx(microHeight)*crossX+dFdy(microHeight)*crossY));}`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
       float facing=pow(1.-clamp(dot(normal,geometryViewDir),0.,1.),2.2);
+      float ao=mix(.62,1.,pow(max(.0,normal.y),.55))*(1.-rock*.22);
+      reflectedLight.indirectDiffuse*=ao;
       reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.05,.09,.16)*facing*(1.-rock);
       vec3 sunDir=normalize(vec3(-160.,220.,-130.));
-      float shade=1.-cloudMask(vGround.xz*.00035)*.28;shade*=mix(.62,1.,pow(max(0.,dot(normal,sunDir)),.55));
+      float shade=1.-cloudMask(vGround.xz*.00035)*.34;shade*=mix(.55,1.,pow(max(0.,dot(normal,sunDir)),.55));
       reflectedLight.directDiffuse*=shade;reflectedLight.directSpecular*=shade;
-      float spark=pow(groundHash(floor(vGround.xz*28.)+floor(vGround.xz.yx*9.)),7.);
-      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.25)*closeSnow*(1.-rock);
-      float glint=pow(max(0.,dot(reflect(-sunDir,normal),geometryViewDir)),42.)*closeSnow*(1.-rock);
-      reflectedLight.directSpecular+=vec3(1.,.98,.93)*(spark*(.55+groomed*.9)+glint*(.25+.7*groomed));`);
+      float spark=pow(groundHash(floor(vGround.xz*28.)+floor(vGround.xz.yx*9.)),6.2);
+      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.15)*closeSnow*(1.-rock);
+      float glint=pow(max(0.,dot(reflect(-sunDir,normal),geometryViewDir)),36.)*closeSnow*(1.-rock);
+      reflectedLight.directSpecular+=vec3(1.,.98,.93)*(spark*(.7+groomed*1.1)+glint*(.3+.85*groomed));
+      float haze=smoothstep(400.,9000.,viewDistance);
+      vec3 air=vec3(.62,.73,.84);
+      reflectedLight.directDiffuse=mix(reflectedLight.directDiffuse,air*.22,haze);
+      reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse,air*.35,haze);
+      reflectedLight.directSpecular*=1.-haze*.85;`);
   };
-  material.customProgramCacheKey=()=> 'alpine-snow-v12';
+  material.customProgramCacheKey=()=> 'alpine-snow-v14';
   // Legacy callers supply a grain map; the world-space shader supersedes it.
   texture?.dispose();return material;
 }

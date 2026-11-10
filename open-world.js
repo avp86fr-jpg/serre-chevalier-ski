@@ -47,11 +47,12 @@ function step(run,input,dt,events){
   }
   const actual=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);run.position=q;run.speed=actual/dt;run.totalDistance+=actual;run.distance=run.totalDistance;run.vertical+=Math.max(0,p.y-q.y);run.maxSpeed=Math.max(run.maxSpeed,run.speed);run.grade=Math.atan2(-run.vy,run.velocity)*180/Math.PI;run.started=true;return;
  }
- run.edgeAngle=lerp(run.edgeAngle,steer*.48,1-Math.exp(-9*dt));const carved=Math.abs(run.edgeAngle)>.14&&!brake?1:0,skid=brake||(Math.abs(steer)>.7&&Math.abs(run.edgeAngle)<.22)?1:0;
- run.heading=(run.heading-(run.edgeAngle/.48)*(((carved&&run.velocity>4)?2.2:1.65)/(1+run.velocity*.065))*(brake?1.22:1)*dt+Math.PI*3)%(Math.PI*2)-Math.PI;
+ run.edgeAngle=lerp(run.edgeAngle,steer*.48*(.58+.42/(1+run.velocity/26)),1-Math.exp(-(8.2/(1+run.velocity/70))*dt));const carved=Math.abs(run.edgeAngle)>.14&&!brake?1:0,skid=brake||(Math.abs(steer)>.7&&Math.abs(run.edgeAngle)<.22)?1:0;
+ run.heading=(run.heading-(run.edgeAngle/.48)*(((carved&&run.velocity>4)?2.45:1.55)/(1+run.velocity*.07))*(brake?1.28:1)*dt+Math.PI*3)%(Math.PI*2)-Math.PI;
  const p=run.position,tx=Math.sin(run.heading),tz=Math.cos(run.heading),slope=(domain.height(p.x-tx,p.z-tz)-domain.height(p.x+tx,p.z+tz))/2,sine=slope/Math.sqrt(1+slope*slope);
  const near=domain.locate(p.x,p.z);run.nearPiste=near;run.softSnow=near?clamp((near.distance/near.width-.65)/.45,0,1):1;if(near&&near.distance<near.width){run.visited.add(near.route.name);run.sectors.add(near.route.sector);}
- const friction=(.035+run.softSnow*.10+skid*.034-carved*.014)*9.81*Math.sqrt(1-sine*sine),drag=(tuck?.0028:.0055)*run.velocity**2,push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
+ const ice=(1-run.softSnow)*(near&&near.distance<near.width*.55?1:0);run.ice=ice;run.surface=run.softSnow>.45?'powder':ice>.7?'ice':'groomed';
+ const friction=(.035-ice*.01+run.softSnow*.10+skid*.04-carved*.016)*9.81*Math.sqrt(1-sine*sine),drag=(tuck?.0028:.0055)*run.velocity**2,push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
  let acceleration=9.81*sine+push-friction-drag-Math.abs(run.edgeAngle)*1.5-(brake?13:0)-run.softSnow*.0018*run.velocity**2;
  run.walking=tuck&&!brake&&sine<-.15&&run.velocity<1.6;if(run.walking)acceleration=(1.2-run.velocity)*3;
  const velocity=Math.max(0,run.velocity+acceleration*dt),travel=(run.velocity+velocity)*.5*dt;let length=travel/Math.sqrt(1+slope*slope),q;

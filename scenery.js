@@ -38,7 +38,7 @@ export function makeForests(world){
   world.treeObstacles=trees;
   const bark=new THREE.MeshStandardMaterial({color:0x4e4034,roughness:1}),leaves=new THREE.MeshStandardMaterial({color:0x1f4a3a,roughness:1}),snowMat=new THREE.MeshStandardMaterial({color:0xf2f7f8,roughness:.82});
   const trunkGeo=new THREE.CylinderGeometry(.11,.24,1,6),foliageGeo=branchGeometry(),snowGeo=branchGeometry(true);
-  const farGeo=combine([[new THREE.ConeGeometry(1,.95,6,1,true).translate(0,.48,0),new THREE.Color(0x1d4336)],[new THREE.ConeGeometry(.86,.55,6,1,true).translate(0,.62,0),new THREE.Color(0x16382d)],[new THREE.ConeGeometry(.7,.48,6,1,true).translate(0,.82,0),new THREE.Color(0xeff5f6)]]),farMat=maskedMaterial(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));
+  const farGeo=combine([[new THREE.ConeGeometry(1.05,1.05,7,1,true).translate(0,.5,0),new THREE.Color(0x1a3f32)],[new THREE.ConeGeometry(.9,.62,7,1,true).translate(0,.66,0),new THREE.Color(0x16382d)],[new THREE.ConeGeometry(.72,.5,6,1,true).translate(0,.88,0),new THREE.Color(0x1f4a38)],[new THREE.ConeGeometry(.48,.36,6,1,true).translate(0,1.05,0),new THREE.Color(0xeff5f6)]]),farMat=maskedMaterial(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));
   const o=new THREE.Object3D(),color=new THREE.Color();
   const larchNear=larchGeometry(),larchSnow=larchGeometry(false,true),larchFar=larchGeometry(true),larchMat=maskedMaterial(new THREE.MeshStandardMaterial({color:0x756650,roughness:1,side:THREE.DoubleSide})),branchMat=new THREE.MeshStandardMaterial({color:0x685947,roughness:1});
   for(const mat of [bark,leaves,snowMat,farMat,larchMat,branchMat])windMaterial(mat,world.environment?.uniforms);
@@ -164,9 +164,9 @@ export function updateScenery(world,dt,time=0){
   if(world.sceneryTimer<=0){
     world.sceneryTimer=.25;const ride=world.mode==='ride',position=world.camera.position;
     for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?460:world.quality==='low'?180:300)+(c.detailed?80:0);const detailed=ride&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
-    for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),detailed=ride&&d<(c.detailed?700:600);if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<450;c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220;}
+    for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),detailed=ride&&d<(c.detailed?860:720);if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<450;c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220;}
     for(const c of world.liftChunks??[]){const near=ride&&distanceTo(c,position)<220;for(const mesh of c.group.children)mesh.castShadow=near;}
-    for(const r of world.liftRuns??[]){r.group.visible=world.options.lifts&&ride&&r.box.distanceToPoint(position)<1300;for(const mesh of r.group.children)mesh.castShadow=r.box.distanceToPoint(position)<180;}
+    for(const r of world.liftRuns??[]){r.group.visible=world.options.lifts&&ride&&r.box.distanceToPoint(position)<2100;for(const mesh of r.group.children)mesh.castShadow=r.box.distanceToPoint(position)<180;}
   }
   for(const r of world.liftRuns??[])if(r.group.visible&&dt>0)placeCarriers(r,time);
 }

@@ -106,19 +106,19 @@ html[data-compact="true"] .loading-overlay p{max-width:85%;text-align:center;lin
 
 /* Portrait descent: quiet centre, reachable controls, compact instrument groups. */
 html[data-compact="true"] .riding .brand small{display:none}
-html[data-compact="true"] .run-header{top:calc(var(--safe-top) + 64px);left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));transform:none;width:auto;min-width:0;max-width:none;padding:8px 10px;gap:10px;height:60px;border-radius:12px}
+html[data-compact="true"] .run-header{top:calc(var(--safe-top) + 6px);left:max(14px,var(--safe-left));right:max(14px,var(--safe-right));transform:none;width:auto;min-width:0;max-width:none;padding:6px 10px;gap:8px;height:48px;border-radius:12px}
 html[data-compact="true"] .run-header>div:nth-child(2){flex:1;min-width:0}
 html[data-compact="true"] .run-header strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 html[data-compact="true"] .run-header small{font-size:7px;letter-spacing:1px}
 html[data-compact="true"] .run-time{font-size:19px;letter-spacing:.4px;padding-left:2px;margin-left:0;flex:none}
-html[data-compact="true"] .ride-progress{top:calc(var(--safe-top) + 131px);left:max(20px,var(--safe-left));right:max(20px,var(--safe-right));width:auto;height:2px}
+html[data-compact="true"] .ride-progress{top:calc(var(--safe-top) + 56px);left:max(20px,var(--safe-left));right:max(20px,var(--safe-right));width:auto;height:2px}
 html[data-compact="true"] .race-strip{top:calc(var(--safe-top) + 145px);width:calc(100% - 40px);gap:0;justify-content:space-around;padding:0 4px}
 html[data-compact="true"] .race-strip small{font-size:7px;letter-spacing:.7px;margin-bottom:4px}
 html[data-compact="true"] .race-strip strong{font-size:15px}
 html[data-compact="true"] #ghostDelta{font-size:12px}
 html[data-compact="true"] .next-gate{top:calc(var(--safe-top) + 194px);padding:7px 10px;font-size:10px;border-radius:7px}
 html[data-compact="true"] .speed-box{bottom:calc(var(--safe-bottom) + 143px);left:max(18px,var(--safe-left));max-width:calc(100% - 164px)}
-html[data-compact="true"] #speed{font-size:64px;letter-spacing:-3px;line-height:1.15}
+html[data-compact="true"] #speed{font-size:56px;letter-spacing:-3px;line-height:1.08}
 html[data-compact="true"] .speed-box .eyebrow{font-size:8px;letter-spacing:.5px;max-width:185px;line-height:1.5}
 html[data-compact="true"] .speed-box>.speed-line{gap:8px}
 html[data-compact="true"] .ride-stats{gap:6px 10px;margin-top:4px}

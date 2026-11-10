@@ -89,8 +89,8 @@ function drawMap(){
   const p=point(path.sample(run.distance,run.offset));ctx.beginPath();ctx.arc(...p,8,0,Math.PI*2);ctx.fillStyle='#e4f7a22a';ctx.fill();ctx.beginPath();ctx.arc(...p,4,0,Math.PI*2);ctx.fillStyle='#e4f7a2';ctx.fill();
 }
 function updateSurfaceBadge(){
- const p=run.openWorld?run.position:path.sample(run.distance,run.offset),margin=world.snowSurface.sample(p.x,p.z).margin,type=run.liftRide?'lift':margin>2?'piste':margin>-.5?'edge':'powder',badge=$('surfaceBadge');
- if(badge.dataset.surface!==type){badge.dataset.surface=type;badge.textContent={piste:'Groomed piste',edge:'Soft piste edge',powder:'Off-piste powder',lift:'Riding the lift'}[type];}
+ const p=run.openWorld?run.position:path.sample(run.distance,run.offset),margin=world.snowSurface.sample(p.x,p.z).margin,type=run.liftRide?'lift':(run.ice>.7&&margin>2)?'ice':margin>2?'piste':margin>-.5?'edge':'powder',badge=$('surfaceBadge');
+ if(badge.dataset.surface!==type){badge.dataset.surface=type;badge.textContent={piste:'Groomed piste',ice:'Hardpack / ice',edge:'Soft piste edge',powder:'Off-piste powder',lift:'Riding the lift'}[type];}
 }
 function updateExploreHud(){
   const p=freeSample(run,world.height),near=run.nearPiste,onPiste=near&&near.distance<near.width;

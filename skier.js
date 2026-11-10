@@ -28,25 +28,49 @@ function skiGeometry(low=false){
  const end=segments*4;indices.push(0,3,1,1,3,2,end,end+1,end+3,end+1,end+2,end+3);
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();return g;
 }
-function visorGeometry(width,height,depth){
- const positions=[],indices=[],columns=12;
- for(let row=0;row<3;row++)for(let i=0;i<=columns;i++){const x=(i/columns-.5)*width;positions.push(x,(row/2-.5)*height,depth+Math.sqrt(Math.max(0,.20**2-x*x)));if(row&&i){const k=row*(columns+1)+i;indices.push(k-columns-2,k-columns-1,k-1,k-1,k-columns-1,k);}}
+function visorGeometry(width,height,depth,wrap=1.05){
+ const positions=[],indices=[],columns=14;
+ for(let row=0;row<3;row++)for(let i=0;i<=columns;i++){
+  const u=i/columns-.5,yaw=u*wrap,x=Math.sin(yaw)*width*.92,z=depth+Math.cos(yaw)*(.11)-.02,y=(row/2-.5)*height*(1-Math.abs(u)*.18);
+  positions.push(x,y,z);if(row&&i){const k=row*(columns+1)+i;indices.push(k-columns-2,k-columns-1,k-1,k-1,k-columns-1,k);}
+ }
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();return g;
 }
 function clothNormal(){
- const size=64,data=new Uint8Array(size*size*4);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){const i=(y*size+x)*4;data.set([128+Math.round(Math.sin(x*Math.PI/1.4)*26+Math.sin(y*.7)*8),128+Math.round(Math.sin(y*Math.PI/1.4)*26+Math.sin(x*.7)*8),240,255],i);}
- const texture=new THREE.DataTexture(data,size,size);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(7,8);texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.needsUpdate=true;return texture;
+ const size=128,data=new Uint8Array(size*size*4);
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const i=(y*size+x)*4,folds=Math.sin(x*.38)*18+Math.sin(y*.22+x*.09)*12+Math.sin((x+y)*.7)*7,seam=Math.abs((x%32)-16)<1.6?14:0;
+  data.set([128+Math.round(folds+seam),128+Math.round(Math.sin(y*.31)*16+Math.sin(x*.19)*9-seam*.4),230,255],i);
+ }
+ const texture=new THREE.DataTexture(data,size,size);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(5,7);texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.needsUpdate=true;return texture;
+}
+function raceSuitMap(){
+ const size=128,data=new Uint8Array(size*size*4);
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const i=(y*size+x)*4,u=x/size,v=y/size,stripe=(((u>.18&&u<.27)||(u>.73&&u<.82))&&v>.12&&v<.88)?1:0,chest=u>.42&&u<.58&&v>.32&&v<.58?1:0;
+  const lycra=.86+.08*Math.sin(v*40)+.04*Math.sin(u*18);
+  let r=210*lycra,g=36*lycra,b=42*lycra;
+  if(stripe){r=g=b=245;}if(chest){r=18;g=24;b=32;}
+  data.set([r,g,b,255],i);
+ }
+ const texture=new THREE.DataTexture(data,size,size);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(1,1);texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.needsUpdate=true;return texture;
 }
 function applyBind(bones){
  for(const name of names){const p=bindPose[name];bones[name].position.set(...p.pos);bones[name].quaternion.set(p.quat[0],p.quat[1],p.quat[2],p.quat[3]);}
 }
 
 function fabricMaterial(tint){
- const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.78,normalMap:clothNormal(),normalScale:new THREE.Vector2(.5,.5)});
+ const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.52,metalness:.08,normalMap:clothNormal(),normalScale:new THREE.Vector2(.85,.85),envMapIntensity:1.15});
  m.userData.suitTint=new THREE.Color(tint||COLORS.shell);
- m.onBeforeCompile=shader=>{shader.uniforms.suitTint={value:m.userData.suitTint};shader.vertexShader='attribute float suit;\nvarying float vSuit;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSuit=suit;');shader.fragmentShader='uniform vec3 suitTint;varying float vSuit;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb,suitTint,vSuit);');};
- m.customProgramCacheKey=()=>'alpine-suit-v13-'+m.userData.suitTint.getHexString();
+ m.onBeforeCompile=shader=>{shader.uniforms.suitTint={value:m.userData.suitTint};shader.vertexShader='attribute float suit;\nvarying float vSuit;varying vec2 vSuitUv;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSuit=suit;vSuitUv=uv;');shader.fragmentShader='uniform vec3 suitTint;varying float vSuit;varying vec2 vSuitUv;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+ vec3 lycra=suitTint*(.78+.22*diffuseColor.rgb);
+ float stripe=step(.16,vSuitUv.x)*step(vSuitUv.x,.24)+step(.76,vSuitUv.x)*step(vSuitUv.x,.84);
+ float panel=step(.42,vSuitUv.x)*step(vSuitUv.x,.58)*step(.30,vSuitUv.y)*step(vSuitUv.y,.62);
+ lycra=mix(lycra,vec3(.93,.93,.91),stripe);
+ lycra=mix(lycra,vec3(.08,.10,.14),panel);
+ float sheen=pow(max(lycra.r,max(lycra.g,lycra.b)),2.4)*.2;
+ diffuseColor.rgb=mix(diffuseColor.rgb,lycra+sheen,vSuit);`);};
+ m.customProgramCacheKey=()=>'alpine-suit-v14-'+m.userData.suitTint.getHexString();
  return m;
 }
 
@@ -69,12 +93,13 @@ function buildGeometry(bones,low=false){
  const box=(bone,size,color,mat,pos,rot,scale)=>add(bone,new THREE.BoxGeometry(...size),color,mat,pos,rot,scale);
  const capsule=(bone,r,length,color,mat,pos,rot,scale)=>add(bone,new THREE.CapsuleGeometry(r,length,low?2:3,low?6:8),color,mat,pos,rot,scale);
  // Helmet cap leaves the face open; strap and mirrored goggles sit over the eyes.
- add('head',new THREE.SphereGeometry(.165,low?10:16,low?8:12,0,Math.PI*2,0,Math.PI*.62),COLORS.panel,1,[0,.13,-.02]);
- add('head',new THREE.TorusGeometry(.155,.016,low?4:6,low?12:18),COLORS.sole,1,[0,.11,.01],[Math.PI/2,0,0]);
- add('head',visorGeometry(.30,.085,.09),COLORS.sole,1,[0,.105,.04]);
- add('head',visorGeometry(.26,.062,.105),COLORS.lens,2,[0,.105,.04]);
+ add('head',new THREE.SphereGeometry(.168,low?10:16,low?8:12,0,Math.PI*2,0,Math.PI*.64),COLORS.panel,1,[0,.128,-.015]);
+ add('head',new THREE.TorusGeometry(.162,.018,low?4:6,low?12:18),COLORS.sole,1,[0,.108,.02],[Math.PI/2,0,0]);
+ add('head',new THREE.TorusGeometry(.15,.014,low?4:5,low?10:16),COLORS.dark,1,[0,.1,.01],[1.15,0,0]);
+ add('head',visorGeometry(.32,.09,.1,1.15),COLORS.sole,1,[0,.102,.03]);
+ add('head',visorGeometry(.275,.066,.118,.95),COLORS.lens,2,[0,.102,.036]);
  for(const side of [-1,1]){
-  capsule('hand'+side,.05,.04,COLORS.glove,1,[0,-.02,.02],[.2,0,0],[1,1,1]);
+  capsule('hand'+side,.048,.05,COLORS.glove,1,[0,-.015,.025],[.25,0,0],[1.05,1,1.08]);
   capsule('upperArm'+side,.072,.20,COLORS.shell,0,[0,.12,0]);
   capsule('forearm'+side,.058,.16,COLORS.shell,0,[0,.10,0]);
   box('boot'+side,[.16,.08,.32],COLORS.sole,1,[0,.04,.08]);
@@ -137,11 +162,11 @@ export class Skier{
    this.contacts[i].copy(v[i]);v[i+2].set(0,.205,-.025).applyQuaternion(this.q).add(v[i]);
   }
   const ground=(v[0].y+v[1].y)/2+.075,breath=Math.sin(s.clock*1.8)*.006*(1-clamp(s.speed/4,0,1))*motion*(1-air);
-  const pelvis=v[4].set(-turn*.13+crash*.22,.88+ground-tuck*.21-s.brake*.045-edge*.035+breath-crash*.42+air*.04,-.055-tuck*.12+air*.08-crash*.2);
-  this.bone('pelvis',pelvis);this.q.setFromEuler(this.euler.set(.12+tuck*.70+air*.25+crash*.9,-turn*.11+crash*.4,turn*.11-crash*.5,'YXZ'));
+  const pelvis=v[4].set(-turn*.16+crash*.22,.88+ground-tuck*.21-s.brake*.045-edge*.04+breath-crash*.42+air*.04,-.055-tuck*.12+air*.08-crash*.2);
+  this.bone('pelvis',pelvis);this.q.setFromEuler(this.euler.set(.12+tuck*.70+air*.25+crash*(.9+s.clock*1.8),-turn*.14+crash*(.4+Math.sin(s.clock*7)*.3),turn*.18-crash*.5,'YXZ'));
   const chest=v[13].set(bindPose.torso.pos[0]-bindPose.pelvis.pos[0],bindPose.torso.pos[1]-bindPose.pelvis.pos[1],bindPose.torso.pos[2]-bindPose.pelvis.pos[2]).applyQuaternion(this.q).add(pelvis);
   this.bone('torso',chest,this.q);
-  const head=v[5].set(bindPose.head.pos[0]-bindPose.pelvis.pos[0],bindPose.head.pos[1]-bindPose.pelvis.pos[1],bindPose.head.pos[2]-bindPose.pelvis.pos[2]).applyQuaternion(this.q).add(pelvis);this.q.setFromEuler(this.euler.set(-.03-tuck*.10+crash*.6,-turn*.18,turn*.05));this.bone('head',head,this.q);
+  const head=v[5].set(bindPose.head.pos[0]-bindPose.pelvis.pos[0],bindPose.head.pos[1]-bindPose.pelvis.pos[1],bindPose.head.pos[2]-bindPose.pelvis.pos[2]).applyQuaternion(this.q).add(pelvis);this.q.setFromEuler(this.euler.set(-.03-tuck*.10+crash*.6,-turn*.22,turn*.08));this.bone('head',head,this.q);
   for(let i=0;i<2;i++){
    const side=i?1:-1,hip=v[6].set(pelvis.x+side*.16,pelvis.y,pelvis.z),knee=v[7];solveJoint(knee,hip,v[i+2],.43,.42,this.forwardHint);this.limb('thigh'+side,hip,knee);this.limb('shin'+side,knee,v[i+2]);
    const shoulder=v[8].set(bindPose['upperArm'+side].pos[0]-bindPose.pelvis.pos[0],bindPose['upperArm'+side].pos[1]-bindPose.pelvis.pos[1],bindPose['upperArm'+side].pos[2]-bindPose.pelvis.pos[2]).applyQuaternion(b.torso.quaternion).add(pelvis),stroke=Math.sin(s.clock*6+(s.walk>.5?(side>0?Math.PI:0):side*.3))*s.push;
@@ -150,8 +175,9 @@ export class Skier{
    if(crash>.4){hx=side*.55;hy=pelvis.y-.05;hz=-.15;}
    const hand=v[9].set(hx,hy,hz);const armReach=hand.distanceTo(shoulder);if(armReach>.56)hand.lerp(shoulder,1-.56/armReach);const elbow=v[10],hint=v[11].set(side,air>.4?-.05:-.3,air>.4?.2:-.4);
    solveJoint(elbow,shoulder,hand,.29,.28,hint);this.limb('upperArm'+side,shoulder,elbow);this.limb('forearm'+side,elbow,hand);b['hand'+side].position.copy(hand);b['hand'+side].quaternion.copy(b['forearm'+side].quaternion).multiply(this.bindQInv['forearm'+side]).multiply(this.bindQ['hand'+side]);
+   const plant=Math.max(0,Math.sin(s.clock*5.2+side*1.2))*edge*(1-tuck)*(1-air)*(1-crash)*clamp(s.speed/14,0,1);
    const tip=v[12].set(hand.x+side*.08,air>.4||crash>.4?hand.y-1.05:this.ground(hand.x+side*.08,hand.z-.5,height),hand.z-.5);
-   const clearance=clamp(hand.y-tip.y,.15,1.17)*(1-tuck*.62)*(1-air*.15);const reach=Math.sqrt(Math.max(.01,1.18**2-clearance**2));tip.z=hand.z-reach*(air>.4?.4:1);tip.y=hand.y-clearance+(s.push?Math.max(0,stroke)*.17:0);this.limb('pole'+side,hand,tip);
+   const clearance=clamp(hand.y-tip.y,.15,1.17)*(1-tuck*.62)*(1-air*.15)*(1-plant*.28);const reach=Math.sqrt(Math.max(.01,1.18**2-clearance**2));tip.z=hand.z-reach*(air>.4?.4:1);tip.y=hand.y-clearance+(s.push?Math.max(0,stroke)*.17:0)-plant*.04;this.limb('pole'+side,hand,tip);
   }
   this.edge=turn*.23;
  }

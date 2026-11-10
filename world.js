@@ -16,7 +16,7 @@ export class MountainWorld{
     this.container=container;this.data=data;this.mountain=mountain;this.height=mountainSampler(mountain);this.outerHeight=heightSampler(outer);this.mode='overview';this.weather='clear';this.options={mobile:!!window.matchMedia?.('(pointer: coarse)').matches,crowds:true,pistes:true,trees:true,lifts:true,ghost:true,dynamic:!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,motion:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:.35};this.quality='auto';this.adaptive=new AdaptiveQuality(Math.min(devicePixelRatio,window.matchMedia?.('(pointer: coarse)').matches?1.25:1.5));this.frameMS=16.7;this.sceneryTimer=0;
     this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(this.adaptive.ratio);this.renderer.setSize(container.clientWidth,container.clientHeight);this.renderer.setClearColor(0x9eb8c8);
-    this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.08;
+    this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.16;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
     this.scene=new THREE.Scene();this.scene.fog=new THREE.FogExp2(0x8fb0c8,.000024);
@@ -73,7 +73,7 @@ export class MountainWorld{
       const k=j*size+i,h=elevations[k];pos.setY(k,h-(isOuter?7:0));
       const dx=(elevations[j*size+Math.min(size-1,i+1)]-elevations[j*size+Math.max(0,i-1)])/(2*width/(size-1));
       const dz=(elevations[Math.min(size-1,j+1)*size+i]-elevations[Math.max(0,j-1)*size+i])/(2*depth/(size-1));
-      const slope=Math.hypot(dx,dz),rock=clamp((slope-.8)*1.6,0,.78);c.setRGB(lerp(.88,.34,rock),lerp(.94,.38,rock),lerp(.99,.43,rock));
+      const slope=Math.hypot(dx,dz),rock=clamp((slope-.55)*1.7,0,.88);c.setRGB(lerp(.86,.30,rock),lerp(.92,.33,rock),lerp(.98,.36,rock));
       if(h<1550)c.multiplyScalar(.94);colors[k*3]=c.r;colors[k*3+1]=c.g;colors[k*3+2]=c.b;
     }
     if(isOuter){const old=geometry.index.array,keep=[];for(let i=0;i<old.length;i+=3){const a=old[i],b=old[i+1],c=old[i+2],x=(pos.getX(a)+pos.getX(b)+pos.getX(c))/3,z=(pos.getZ(a)+pos.getZ(b)+pos.getZ(c))/3;if(!(x>-9728&&x<9728&&z>-7680&&z<8192))keep.push(a,b,c);}geometry.setIndex(keep);}
@@ -184,17 +184,17 @@ export class MountainWorld{
     this.skier.position.copy(position);this.skier.lookAt(this.rideVectors[3].copy(position).add(forward));if(!run.liftRide)this.character.update(run,input,dt,time,run.airborne||run.crashed>0?null:this.height,this.options.motion??.35);p.skiContacts=this.character.worldContacts;
     this.blob.position.set(p.x,p.y+.07,p.z);this.blob.rotation.set(-Math.PI/2,0,-heading);this.blob.visible=!run.liftRide&&!run.airborne;
     const air=run.airborne?Math.min(1,(run.airTime||0)/.55):0;
-    const behind=this.rideCamera?0:8.8+air*3.4,above=this.rideCamera?(run.liftRide?1.7:clamp(this.character.bones.head.matrixWorld.elements[13]-position.y+.03,.9,1.8)):2.9+air*1.7;
+    const behind=this.rideCamera?0:8.2+air*3.4,above=this.rideCamera?(run.liftRide?1.7:clamp(this.character.bones.head.matrixWorld.elements[13]-position.y+.03,.9,1.8)):3.35+air*1.7;
     const routeForward=this.rideVectors[2].set(Math.sin(travel),-p.slope,Math.cos(travel)).normalize();
     this.cameraPosition.copy(position).addScaledVector(routeForward,-behind);this.cameraPosition.y=Math.max(this.cameraPosition.y+above,this.height(this.cameraPosition.x,this.cameraPosition.z)+(this.rideCamera?.9:1.9));this.cameraPosition.y+=feedback.bob;
-    const ahead=run.openWorld?{x:p.x+Math.sin(travel)*(this.rideCamera?20:12),z:p.z+Math.cos(travel)*(this.rideCamera?20:12),y:run.liftRide||run.airborne?p.y:this.height(p.x+Math.sin(travel)*(this.rideCamera?20:12),p.z+Math.cos(travel)*(this.rideCamera?20:12))}:this.path.sample(Math.min(this.path.length,run.distance+(this.rideCamera?30:18)),run.offset*.7);
-    this.cameraTarget.set(ahead.x,ahead.y+(this.rideCamera?1.3:1.7),ahead.z);
+    const ahead=run.openWorld?{x:p.x+Math.sin(travel)*(this.rideCamera?20:16),z:p.z+Math.cos(travel)*(this.rideCamera?20:16),y:run.liftRide||run.airborne?p.y:this.height(p.x+Math.sin(travel)*(this.rideCamera?20:16),p.z+Math.cos(travel)*(this.rideCamera?20:16))}:this.path.sample(Math.min(this.path.length,run.distance+(this.rideCamera?30:22)),run.offset*.7);
+    this.cameraTarget.set(ahead.x,ahead.y+(this.rideCamera?1.3:2.45),ahead.z);
     this.camera.position.lerp(this.cameraPosition,this.snapCamera?1:1-Math.exp(-dt*8));
     // Protect the camera during a convex roll or a tight bend.
     this.camera.position.y=Math.max(this.camera.position.y,this.height(this.camera.position.x,this.camera.position.z)+.8);
     if(this.snapCamera)this.smoothedLook=this.cameraTarget.clone();this.smoothedLook.lerp(this.cameraTarget,1-Math.exp(-dt*10));this.camera.lookAt(this.smoothedLook);this.camera.rotateZ(feedback.roll);
     const fov=(this.rideCamera?74:57)+Math.min(16,run.speed*.38);this.camera.fov=this.snapCamera?fov:lerp(this.camera.fov,fov,1-Math.exp(-dt*3));this.camera.near=.08;this.camera.updateProjectionMatrix();this.snapCamera=false;this.skier.visible=this.rideCamera===0&&!run.liftRide;if(this.travelCabin){this.travelCabin.visible=!!run.liftRide&&this.rideCamera===0;this.travelCabin.position.copy(position);this.travelCabin.rotation.y=run.heading;this.travelGondola.visible=!!run.liftRide?.lift.gondola;this.travelChair.visible=!run.liftRide?.lift.gondola;}this.blob.visible=!run.liftRide&&!run.airborne;
-    this.sun.position.set(p.x-160,p.y+220,p.z-130);this.sun.target.position.copy(position);this.sun.target.updateMatrixWorld();
+    const sun=this.environment?.sunOffset||{x:-160,y:220,z:-130};this.sun.position.set(p.x+sun.x,p.y+sun.y,p.z+sun.z);this.sun.target.position.copy(position);this.sun.target.updateMatrixWorld();
     this.fx.update(p,run,input,run.liftRide?0:dt,time,(this.container?.clientHeight||900)*(this.renderer.getPixelRatio?.()||1));
     if(this.snow.visible){this.snow.position.set(p.x,p.y-10,p.z);this.snowTime.value=time;}
     const ghost=this.options.ghost?ghostAt(this.ghostRecord,run.time):null;this.ghost.visible=false;

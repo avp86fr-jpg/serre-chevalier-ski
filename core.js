@@ -74,8 +74,8 @@ const magnitude=p=>Math.hypot(p.x,p.y,p.z);
 function stepRun(run,input,dt){
   const path=run.path,steer=Number.isFinite(input.steer)?clamp(input.steer,-1,1):Number(!!input.right)-Number(!!input.left),brake=!!input.brake,tuck=!!input.tuck,jump=!!input.jump;
   const limit=path.halfWidth-1,edge=clamp((Math.abs(run.offset)-limit+3)/3,0,1);
-  const requested=steer*.48*(steer*run.offset>0?1-edge:1);
-  run.edgeAngle=lerp(run.edgeAngle,requested,1-Math.exp(-9*dt));
+  const requested=steer*.48*(steer*run.offset>0?1-edge:1)*(.58+.42/(1+run.velocity/26));
+  run.edgeAngle=lerp(run.edgeAngle,requested,1-Math.exp(-(8.2/(1+run.velocity/70))*dt));
   let dd=Math.cos(run.edgeAngle),doo=Math.sin(run.edgeAngle);
   if(doo*run.offset>0)doo*=1-edge;
   const p=path.sample(run.distance,run.offset);
@@ -85,10 +85,12 @@ function stepRun(run,input,dt){
   const sine=clamp(-motion.y/(magnitude(motion)||1),-1,1),cosine=Math.sqrt(1-sine*sine);
   // m/s, metres and seconds throughout. Tucking changes drag, never distance scaling.
   run.softSnow=clamp((Math.abs(run.offset)/path.halfWidth-.67)/.26,0,1);
-  const gravity=9.81*sine,friction=(.035+edge*.09+run.softSnow*.08)*9.81*cosine;
+  const ice=(1-run.softSnow)*clamp(1-edge,0,1);
+  run.ice=ice;run.surface=run.softSnow>.45?'powder':ice>.7?'ice':'groomed';
+  const gravity=9.81*sine,friction=(.035-ice*.01+edge*.09+run.softSnow*.08)*9.81*cosine;
   const drag=(tuck&&run.velocity>4?.0028:.0055)*run.velocity**2;
   const carved=Math.abs(run.edgeAngle)>.14&&!brake?1:0,skid=brake||(Math.abs(steer)>.7&&Math.abs(run.edgeAngle)<.22)?1:0;
-  const edging=(skid?Math.abs(run.edgeAngle)*2.1:Math.abs(run.edgeAngle)*.55)+run.softSnow*.0018*run.velocity**2;
+  const edging=(skid?Math.abs(run.edgeAngle)*2.35:Math.abs(run.edgeAngle)*(.42+ice*.2))+run.softSnow*.0018*run.velocity**2+(skid&&!brake?run.velocity*.04:0);
   const push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
   const curvature=Math.max(path.curvature(run.distance),path.curvature(run.distance+run.velocity*.8));
   const bendSpeed=Math.sqrt(5/Math.max(.00001,curvature));
@@ -116,10 +118,11 @@ function stepRun(run,input,dt){
   const jumpEdge=jump&&!run.jumpHeld;run.jumpHeld=jump;
   if(run.airborne){
     run.vy-=9.81*usedDt;run.airY+=run.vy*usedDt;run.airTime+=usedDt;run.grab=tuck||input.grab?'safety':'';
-    if(run.airY<=0&&run.vy<=0.4){const impact=Math.max(0,-run.vy);run.airborne=false;run.airY=0;run.vy=0;run.grab='';run.landing=impact>7.5?'crash':impact>4?'heavy':'clean';if(run.landing==='crash'){run.crashed=1.2;run.velocity*=.25;run.combo=0;}run.airTime=0;}
+    if(run.airY<=0&&run.vy<=0.4){const impact=Math.max(0,-run.vy);run.airborne=false;run.airY=0;run.vy=0;run.grab='';run.landing=impact>7.2?'crash':impact>3.8?'heavy':'clean';if(run.landing==='crash'){run.crashed=1.8;run.velocity*=.22;run.combo=0;}else if(run.landing==='heavy'){run.velocity*=.82;run.crashed=.15;}run.airTime=0;}
   }else if(jumpEdge&&!run.walking&&run.velocity>3.2&&run.discipline!=='challenge'){
     run.airborne=true;run.airY=.02;run.vy=2.05+run.velocity*.055;run.airTime=0;run.landing='';
   }else{run.airY=0;run.vy=0;run.airborne=false;}
+  if(run.crashed>0)run.crashed=Math.max(0,run.crashed-usedDt);
   const events=[];
   while(run.nextGate<path.gates.length&&run.distance>=path.gates[run.nextGate].distance){
     const index=run.nextGate++,gate=path.gates[index],fraction=clamp((gate.distance-previous)/(run.distance-previous||1),0,1),offset=lerp(previousOffset,run.offset,fraction);

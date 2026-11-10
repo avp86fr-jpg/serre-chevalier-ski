@@ -7,9 +7,9 @@ export const CLOUD_GLSL=`
  float cloudField(vec2 p){p+=vec2(.006,.0025)*envTime;return envNoise(p)*.65+envNoise(p*2.07)*.35;}
  float cloudMask(vec2 p){return smoothstep(mix(.83,.23,cloudCover),mix(.99,.54,cloudCover),cloudField(p));}
 `;
-const PRESETS={clear:{sun:3.55,hemi:1.45,fog:.000062,cover:.28,wind:.35,top:'#2f6fb8',bottom:'#c9dcea',fogColor:'#8fb0c8',sunColor:'#fff3d0'},golden:{sun:3.05,hemi:1.5,fog:.00007,cover:.2,wind:.22,top:'#5a7fa0',bottom:'#f3d0aa',fogColor:'#b4b9c2',sunColor:'#ffc98a'},snow:{sun:.85,hemi:2.15,fog:.002,cover:.95,wind:.8,top:'#8eabc0',bottom:'#d8e2e8',fogColor:'#c0d0da',sunColor:'#fff5da'},overcast:{sun:1.2,hemi:1.95,fog:.00052,cover:.88,wind:.5,top:'#6f8aa0',bottom:'#cdd6dd',fogColor:'#a9b8c4',sunColor:'#e8eef2'}};
+const PRESETS={clear:{sun:3.7,hemi:1.4,fog:.00009,cover:.28,wind:.35,top:'#2a6bb8',bottom:'#d2e4f2',fogColor:'#9bb6c8',sunColor:'#fff3d0',exposure:1.18},golden:{sun:3.1,hemi:1.55,fog:.0001,cover:.2,wind:.22,top:'#5a7fa0',bottom:'#f3d0aa',fogColor:'#b8b6b0',sunColor:'#ffc98a',exposure:1.08},snow:{sun:.8,hemi:2.2,fog:.0024,cover:.95,wind:.8,top:'#8eabc0',bottom:'#d8e2e8',fogColor:'#c0d0da',sunColor:'#fff5da',exposure:.92},overcast:{sun:1.15,hemi:2.0,fog:.0007,cover:.88,wind:.5,top:'#6f8aa0',bottom:'#cdd6dd',fogColor:'#a9b8c4',sunColor:'#e8eef2',exposure:.96}};
 export class AlpineEnvironment{
- constructor(world){this.world=world;this.time=0;this.blend=0;this.initialized=false;this.uniforms={envTime:{value:0},cloudCover:{value:.32},windPower:{value:.35},surfaceDetail:{value:1}};this.colors={top:new THREE.Color(),bottom:new THREE.Color(),fog:new THREE.Color(),sun:new THREE.Color()};this.makeDrift();}
+ constructor(world){this.world=world;this.time=0;this.blend=0;this.initialized=false;this.sunOffset={x:-160,y:220,z:-130};this.uniforms={envTime:{value:0},cloudCover:{value:.32},windPower:{value:.35},surfaceDetail:{value:1}};this.colors={top:new THREE.Color(),bottom:new THREE.Color(),fog:new THREE.Color(),sun:new THREE.Color()};this.makeDrift();}
  makeDrift(){
   const rand=seededRandom(604),positions=new Float32Array(192*3);for(let i=0;i<positions.length;i+=3){positions[i]=(rand()-.5)*100;positions[i+1]=rand()*2.5;positions[i+2]=(rand()-.5)*100;}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));
@@ -25,9 +25,15 @@ export class AlpineEnvironment{
   const wind=live&&Number.isFinite(live.wind)?clamp(live.wind/22,.15,1.15):p.wind;
   this.uniforms.cloudCover.value=lerp(this.uniforms.cloudCover.value,cover,mix);
   const gust=.68+.22*Math.sin(this.time*.31)+.10*Math.sin(this.time*.83);this.uniforms.windPower.value=enabled?wind*gust:0;
-  w.sun.intensity=lerp(w.sun.intensity,p.sun*(1-.045*Math.sin(this.time*.04)),mix);w.hemi.intensity=lerp(w.hemi.intensity,p.hemi,mix);
+  const liveHour=live&&Number.isFinite(live.hour)?live.hour:12,day=live?.isDay!==0&&liveHour>=6&&liveHour<=20;
+  const elev=day?Math.max(.12,Math.sin(Math.PI*clamp((liveHour-6)/13,0,1))):.06;
+  const az=(liveHour-13)/7;
+  this.sunOffset.x=-180+az*90;this.sunOffset.y=70+elev*200;this.sunOffset.z=-70-elev*80;
+  const night=day?1:.42;
+  w.sun.intensity=lerp(w.sun.intensity,p.sun*night*(1-.045*Math.sin(this.time*.04)),mix);w.hemi.intensity=lerp(w.hemi.intensity,p.hemi*(day?1:1.15),mix);
   w.sun.color.lerp(this.colors.sun.set(p.sunColor),mix);w.scene.fog.color.lerp(this.colors.fog.set(p.fogColor),mix);
-  w.scene.fog.density=lerp(w.scene.fog.density,w.mode==='ride'?p.fog:w.weather==='snow'?.00007:.000027,mix);
+  w.scene.fog.density=lerp(w.scene.fog.density,w.mode==='ride'?p.fog*(day?1:1.15):w.weather==='snow'?.00007:.00003,mix);
+  if(w.renderer?.toneMappingExposure!=null)w.renderer.toneMappingExposure=lerp(w.renderer.toneMappingExposure,(p.exposure||1.1)*night,mix);
   w.sky.material.uniforms.topColor.value.lerp(this.colors.top.set(p.top),mix);w.sky.material.uniforms.bottomColor.value.lerp(this.colors.bottom.set(p.bottom),mix);
   this.drift.visible=enabled&&w.mode==='ride'&&w.quality!=='low';
   if(this.drift.visible){const x=w.skier.position.x,z=w.skier.position.z,cx=Math.round(x/16)*16,cz=Math.round(z/16)*16;
