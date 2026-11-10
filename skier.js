@@ -60,7 +60,7 @@ function applyBind(bones){
 }
 
 function fabricMaterial(tint){
- const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.52,metalness:.08,normalMap:clothNormal(),normalScale:new THREE.Vector2(.85,.85),envMapIntensity:1.15});
+ const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.42,metalness:.16,normalMap:clothNormal(),normalScale:new THREE.Vector2(1.05,1.05),envMapIntensity:1.35});
  m.userData.suitTint=new THREE.Color(tint||COLORS.shell);
  m.onBeforeCompile=shader=>{shader.uniforms.suitTint={value:m.userData.suitTint};shader.vertexShader='attribute float suit;\nvarying float vSuit;varying vec2 vSuitUv;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSuit=suit;vSuitUv=uv;');shader.fragmentShader='uniform vec3 suitTint;varying float vSuit;varying vec2 vSuitUv;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
  vec3 lycra=suitTint*(.78+.22*diffuseColor.rgb);
@@ -132,7 +132,7 @@ export class Skier{
   this.scratch=Array.from({length:20},()=>new THREE.Vector3());this.q=new THREE.Quaternion();this.euler=new THREE.Euler();this.inverse=new THREE.Matrix4();this.forwardHint=new THREE.Vector3(0,0,1);
   this.contacts=[new THREE.Vector3(),new THREE.Vector3()];this.worldContacts=[{x:0,y:0,z:0,tx:0,tz:1},{x:0,y:0,z:0,tx:0,tz:1}];this.edge=0;this.bindQ={};this.bindQInv={};for(const name of names){const q=bindPose[name].quat;this.bindQ[name]=new THREE.Quaternion(q[0],q[1],q[2],q[3]);this.bindQInv[name]=this.bindQ[name].clone().invert();}this.limbAxis=new THREE.Vector3(0,1,0);
   applyBind(this.bones);this.root.updateMatrixWorld(true);
-  if(!shared){const geometry=buildGeometry(this.bones),gear=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.4,metalness:.18}),lens=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.06,metalness:.92});shared={geometry,lowGeometry:buildGeometry(this.bones,true),gear,lens,fabrics:{}};}
+  if(!shared){const geometry=buildGeometry(this.bones),gear=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.32,metalness:.28}),lens=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.045,metalness:.96,envMapIntensity:1.4});shared={geometry,lowGeometry:buildGeometry(this.bones,true),gear,lens,fabrics:{}};}
   if(!shared.fabrics[kit])shared.fabrics[kit]=fabricMaterial(SUIT_KITS[kit]||SUIT_KITS.hero);
   this.skeleton=new THREE.Skeleton(names.map(name=>this.bones[name]));
   this.mesh=new THREE.SkinnedMesh(ghost?shared.lowGeometry:shared.geometry,ghost?new THREE.MeshBasicMaterial({color:0xbfe8e0,transparent:true,opacity:.24,depthWrite:false}):[shared.fabrics[kit],shared.gear,shared.lens]);

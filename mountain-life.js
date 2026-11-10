@@ -53,6 +53,7 @@ export class MountainLife{
   this.markerShafts.count=this.markerBands.count=count;this.markerShafts.instanceMatrix.needsUpdate=this.markerBands.instanceMatrix.needsUpdate=true;if(this.markerBands.instanceColor)this.markerBands.instanceColor.needsUpdate=true;
  }
 
+ setQuality(q){this.quality=q;for(const s of this.actors)s.setQuality(q==='low');}
  update(dt){const w=this.world;this.clock+=Math.max(0,dt);this.timer-=dt;const active=w.mode==='ride';const p=w.camera.position;
   if(this.timer<=0||!this.lastView||Math.hypot(p.x-this.lastView.x,p.z-this.lastView.z)>150){this.timer=.25;this.lastView={x:p.x,z:p.z};this.updateMarkers(active);}
   if(!active||w.options.crowds===false){for(const s of this.actors)s.root.visible=false;if(this.basherGroup)this.basherGroup.visible=false;this.bodies.count=0;return;}
@@ -64,14 +65,14 @@ export class MountainLife{
   }
   this.crowdDue=(this.crowdDue||0)-dt;if(this.crowdDue>0&&dt!==0){/* still keep visible actors this frame */ }else this.crowdDue=w.options.mobile?1/20:1/24;
   if(this.crowdDue<=1/20||dt===0){
-   const budget=Math.min(this.actors.length,w.quality==='low'?6:w.options.mobile?8:10),candidates=[];
+   const budget=Math.min(this.actors.length,w.quality==='low'?3:w.options.mobile?7:10),candidates=[];
    for(const a of this.population){const d=(a.phase+this.clock*a.speed)%a.line.length,q=lineAt(a.line,d),distance=Math.hypot(q.x-p.x,q.z-p.z);if(distance<1100&&d>6&&d<a.line.length-12)candidates.push({a,q,distance,d});}
    candidates.sort((a,b)=>a.distance-b.distance);let count=0;
    for(const {a,q,d}of candidates){if(count>=budget)break;const turn=Math.sin(this.clock*.65+a.phase)*.8,offset=a.offset+turn,x=q.x-Math.cos(q.heading)*offset,z=q.z+Math.sin(q.heading)*offset;
     if(Math.hypot(x-w.skier.position.x,z-w.skier.position.z)<7)continue;
     const ahead=lineAt(a.line,Math.min(a.line.length,d+3)),slope=(ahead.y-q.y)/Math.max(1,Math.hypot(ahead.x-q.x,ahead.z-q.z)),skier=this.actors[count],y=w.height(x,z)+.10;
     skier.root.visible=true;skier.root.position.set(x,y,z);skier.root.rotation.set(-Math.atan(slope),q.heading,turn*.06,'YXZ');
-    skier.update({speed:a.speed,edgeAngle:turn*.25,walking:false,airborne:false,crashed:0,grab:'',softSnow:0},{tuck:a.speed>8},Math.max(0,dt),this.clock,w.height,.2);
+    if(w.quality!=='low'||count<2)skier.update({speed:a.speed,edgeAngle:turn*.25,walking:false,airborne:false,crashed:0,grab:'',softSnow:0},{tuck:a.speed>8},Math.max(0,dt),this.clock,w.height,.2);
     this.pose.position.set(x,y,z);this.pose.rotation.set(-Math.atan(slope),q.heading,turn*.06,'YXZ');this.pose.scale.setScalar(1);this.pose.updateMatrix();this.bodies.setMatrixAt(count,this.pose.matrix);
     count++;
    }

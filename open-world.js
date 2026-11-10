@@ -15,7 +15,7 @@ export class MountainDomain{
 export function freeSample(run,height){const tx=Math.sin(run.heading),tz=Math.cos(run.heading),p=run.position,a=height(p.x-tx,p.z-tz),b=height(p.x+tx,p.z+tz);return{x:p.x,y:(run.liftRide||run.airborne)?p.y:height(p.x,p.z),z:p.z,tx,tz,heading:run.heading,slope:run.liftRide?0:(a-b)/2,spin:run.spin||0};}
 export function safeSpawn(domain,point){const b=domain.bounds,x=clamp(point.x,b[0]+4,b[2]-4),z=clamp(point.z,b[1]+4,b[3]-4);if(!domain.obstacle(x,z))return{x,z};for(let r=4;r<=64;r+=4)for(let i=0;i<16;i++){const px=x+Math.sin(i*Math.PI/8)*r,pz=z+Math.cos(i*Math.PI/8)*r;if(px>b[0]+2&&px<b[2]-2&&pz>b[1]+2&&pz<b[3]-2&&!domain.obstacle(px,pz))return{x:px,z:pz};}return{x,z};}
 export function newExplore(domain,spawn,heading=0){spawn=safeSpawn(domain,spawn);const y=domain.height(spawn.x,spawn.z);return{openWorld:true,discipline:'explore',domain,position:{x:spawn.x,y,z:spawn.z},heading,time:0,speed:0,velocity:0,distance:0,totalDistance:0,vertical:0,maxSpeed:0,offset:0,edgeAngle:0,softSnow:0,grade:0,started:false,completed:false,accumulator:0,walking:false,lateral:0,gates:0,combo:0,score:0,penalty:0,nextGate:0,visited:new Set(),sectors:new Set(),liftRide:null,nearPiste:domain.locate(spawn.x,spawn.z),blocked:'',noticeCooldown:0,airborne:false,vy:0,airTime:0,spin:0,grab:'',landing:'',crashed:0,tricks:0,jumpHeld:false};}
-export function relocate(run,point,heading=0){point=safeSpawn(run.domain,point);const b=run.domain.bounds;run.position={x:clamp(point.x,b[0]+4,b[2]-4),y:0,z:clamp(point.z,b[1]+4,b[3]-4)};run.position.y=run.domain.height(run.position.x,run.position.z);run.heading=heading;run.velocity=run.speed=run.edgeAngle=run.accumulator=0;run.liftRide=null;run.blocked='';run.nearPiste=run.domain.locate(point.x,point.z);run.grade=0;run.walking=false;run.started=false;run.airborne=false;run.vy=0;run.airTime=0;run.spin=0;run.grab='';run.landing='';run.crashed=0;run.jumpHeld=false;}
+export function relocate(run,point,heading=0){point=safeSpawn(run.domain,point);const b=run.domain.bounds;run.position={x:clamp(point.x,b[0]+4,b[2]-4),y:0,z:clamp(point.z,b[1]+4,b[3]-4)};run.position.y=run.domain.height(run.position.x,run.position.z);run.heading=heading;run.velocity=run.speed=run.edgeAngle=run.accumulator=0;run.liftRide=null;run.blocked='';run.nearPiste=run.domain.locate(point.x,point.z);run.grade=0;run.walking=false;run.started=false;run.airborne=false;run.vy=0;run.airTime=0;run.spin=0;run.grab='';run.landing='';run.crashed=0;run.jumpHeld=false;run.recoverPiste=0;}
 export function boardLift(run,lift){if(!run.openWorld||run.liftRide||run.airborne||run.speed>3||Math.hypot(run.position.x-lift.bottom.x,run.position.z-lift.bottom.z)>55)return false;run.liftRide={lift,travel:0};run.velocity=run.speed=0;run.airborne=false;run.vy=0;run.spin=0;run.grab='';return true;}
 export function leaveLift(run){if(!run.liftRide)return false;const lift=run.liftRide.lift,accumulator=run.accumulator;relocate(run,lift.exit,lift.exitHeading);run.accumulator=accumulator;return true;}
 export function advanceExplore(run,input,dt){if(!Number.isFinite(dt)||dt<=0)return[];run.accumulator+=Math.min(dt,.5);const events=[];while(run.accumulator+1e-10>=PHYSICS_STEP){step(run,input,PHYSICS_STEP,events);run.accumulator-=PHYSICS_STEP;}return events;}
@@ -26,7 +26,7 @@ function step(run,input,dt,events){
  const steer=clamp(Number.isFinite(input.steer)?input.steer:Number(!!input.right)-Number(!!input.left),-1,1),brake=!!input.brake,tuck=!!input.tuck,jump=!!input.jump;
  const jumpEdge=jump&&!run.jumpHeld;run.jumpHeld=jump;
  if(run.airborne){
-  run.spin+=(steer*3.4+(input.spin||0))*dt;run.heading=(run.heading-steer*.35*dt+Math.PI*3)%(Math.PI*2)-Math.PI;
+  run.spin+=(steer*4.4+(input.spin||0))*dt;run.heading=(run.heading-steer*.35*dt+Math.PI*3)%(Math.PI*2)-Math.PI;
   run.grab=tuck||input.grab? (input.grab|| (steer>0.35?'mute':steer<-0.35?'stalefish':'safety')) :'';
   const tx=Math.sin(run.heading),tz=Math.cos(run.heading),drag=.0011*run.velocity**2;
   run.velocity=Math.max(2.4,run.velocity-drag*dt);run.vy-=9.81*dt;
@@ -36,13 +36,15 @@ function step(run,input,dt,events){
   const ground=domain.height(q.x,q.z);run.airTime+=dt;
   if(q.y<=ground&&run.vy<=0.4){
    const slope=(domain.height(q.x-tx,q.z-tz)-domain.height(q.x+tx,q.z+tz))/2;
-   const spinErr=Math.abs(((run.spin+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI);
+   const wrapped=((run.spin+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+   const spinErr=Math.min(Math.abs(wrapped),Math.abs(Math.abs(wrapped)-Math.PI));
    const impact=Math.max(0,-run.vy),pitchErr=Math.abs(Math.atan(slope)-Math.atan(-run.vy/Math.max(.2,run.velocity)));
-   const ugly=impact>8.2||spinErr>1.15||pitchErr>1.05||run.airTime<.08&&impact>5.5;
-   const quality=clamp(1-impact/9-spinErr/2.2-pitchErr/1.6,0,1);
+   const ugly=impact>8.2||spinErr>1.15||pitchErr>1.2||run.airTime<.08&&impact>5.5;
+   const quality=clamp(1-impact/9-spinErr/2.2-pitchErr/1.8,0,1);
    const grab=run.grab,spin=run.spin;run.position={x:q.x,y:ground,z:q.z};run.airborne=false;run.vy=0;run.spin=0;run.grab='';run.nearPiste=domain.locate(q.x,q.z);
-   if(ugly){run.crashed=1.7;run.velocity=Math.min(run.velocity*.2,3);run.landing='crash';run.combo=0;events.push({type:'crash',quality,impact,airTime:run.airTime,grab,spin});}
-   else {run.velocity=Math.max(3,run.velocity*(.86+.1*quality)-impact*.35);run.landing=quality>.72?'clean':quality>.4?'heavy':'sketchy';if(run.airTime>.18){run.tricks++;run.combo++;run.score+=Math.round(40+run.airTime*80+quality*60);}events.push({type:'landing',quality,style:run.landing,airTime:run.airTime,impact,grab,spin});}
+   if(ugly){run.crashed=1.7;run.velocity=Math.min(run.velocity*.45,8);run.landing='crash';run.combo=0;events.push({type:'crash',quality,impact,airTime:run.airTime,grab,spin});}
+   else {run.velocity=Math.max(run.velocity*.7,run.velocity*(.94+.05*quality)-impact*.16);run.landing=quality>.72?'clean':quality>.4?'heavy':'sketchy';if(run.airTime>.16){run.tricks++;run.combo++;run.score+=Math.round(40+run.airTime*80+quality*60);}events.push({type:'landing',quality,style:run.landing,airTime:run.airTime,impact,grab,spin});
+    const n=run.nearPiste;if(n){const dx=n.x-run.position.x,dz=n.z-run.position.z,dist=Math.hypot(dx,dz);if(dist>1.2){const pull=Math.min(3.2,dist*.4),nx=run.position.x+dx/dist*pull,nz=run.position.z+dz/dist*pull;if(!domain.obstacle(nx,nz)){run.position.x=nx;run.position.z=nz;run.position.y=domain.height(nx,nz);}}let h=n.heading-run.heading;while(h>Math.PI)h-=Math.PI*2;while(h<-Math.PI)h+=Math.PI*2;run.heading+=clamp(h,-.55,.55);run.recoverPiste=1.2;}}
    run.speed=run.velocity;run.airTime=0;run.grade=Math.atan(slope)*180/Math.PI;run.started=true;return;
   }
   const actual=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);run.position=q;run.speed=actual/dt;run.totalDistance+=actual;run.distance=run.totalDistance;run.vertical+=Math.max(0,p.y-q.y);run.maxSpeed=Math.max(run.maxSpeed,run.speed);run.grade=Math.atan2(-run.vy,run.velocity)*180/Math.PI;run.started=true;return;
@@ -51,9 +53,11 @@ function step(run,input,dt,events){
  run.heading=(run.heading-(run.edgeAngle/.48)*(((carved&&run.velocity>4)?2.45:1.55)/(1+run.velocity*.07))*(brake?1.28:1)*dt+Math.PI*3)%(Math.PI*2)-Math.PI;
  const p=run.position,tx=Math.sin(run.heading),tz=Math.cos(run.heading),slope=(domain.height(p.x-tx,p.z-tz)-domain.height(p.x+tx,p.z+tz))/2,sine=slope/Math.sqrt(1+slope*slope);
  const near=domain.locate(p.x,p.z);run.nearPiste=near;run.softSnow=near?clamp((near.distance/near.width-.65)/.45,0,1):1;if(near&&near.distance<near.width){run.visited.add(near.route.name);run.sectors.add(near.route.sector);}
+ if(run.recoverPiste>0){run.recoverPiste=Math.max(0,run.recoverPiste-dt);if(near){let h=near.heading-run.heading;while(h>Math.PI)h-=Math.PI*2;while(h<-Math.PI)h+=Math.PI*2;run.heading+=h*Math.min(1,2.6*dt);}}
+ const soft=(run.recoverPiste>0)?run.softSnow*.35:run.softSnow;
  const ice=(1-run.softSnow)*(near&&near.distance<near.width*.55?1:0);run.ice=ice;run.surface=run.softSnow>.45?'powder':ice>.7?'ice':'groomed';
- const friction=(.035-ice*.01+run.softSnow*.10+skid*.04-carved*.016)*9.81*Math.sqrt(1-sine*sine),drag=(tuck?.0028:.0055)*run.velocity**2,push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
- let acceleration=9.81*sine+push-friction-drag-Math.abs(run.edgeAngle)*1.5-(brake?13:0)-run.softSnow*.0018*run.velocity**2;
+ const friction=(.035-ice*.01+soft*.10+skid*.04-carved*.016)*9.81*Math.sqrt(1-sine*sine),drag=(tuck?.0028:.0055)*run.velocity**2,push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
+ let acceleration=9.81*sine+push-friction-drag-Math.abs(run.edgeAngle)*1.5-(brake?13:0)-soft*.0018*run.velocity**2;
  run.walking=tuck&&!brake&&sine<-.15&&run.velocity<1.6;if(run.walking)acceleration=(1.2-run.velocity)*3;
  const velocity=Math.max(0,run.velocity+acceleration*dt),travel=(run.velocity+velocity)*.5*dt;let length=travel/Math.sqrt(1+slope*slope),q;
  for(let i=0;i<3;i++){q={x:p.x+tx*length,z:p.z+tz*length};q.y=domain.height(q.x,q.z);const actual=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);if(actual<1e-8)break;length*=travel/actual;}

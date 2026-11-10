@@ -35,7 +35,7 @@ float snowCap=step(fract(vBuildingUV.y+.02),.04)*step(1.6,vBuildingUV.y);diffuse
 export function roofSnowMaterial(environment){
  const m=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.86});
  m.onBeforeCompile=shader=>{Object.assign(shader.uniforms,environment||{envTime:{value:0},cloudCover:{value:0},surfaceDetail:{value:1}});shader.vertexShader='varying vec3 vRoof;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvRoof=(modelMatrix*instanceMatrix*vec4(position,1.)).xyz;');shader.fragmentShader=CLOUD_GLSL+'varying vec3 vRoof;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
- float cap=smoothstep(.10,.36,envNoise(vRoof.xz*.13));float seams=smoothstep(.90,.99,fract(vRoof.y*3.+vRoof.x*.2));
- vec3 slate=mix(vec3(.16,.20,.23),vec3(.30,.32,.32),envNoise(vRoof.xz*1.3))*(1.-seams*.25);
- diffuseColor.rgb*=mix(slate,vec3(.94,.97,.99),cap);`);shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>','#include <lights_fragment_end>\nreflectedLight.directDiffuse*=1.-cloudMask(vRoof.xz*.00035)*.27;');};m.customProgramCacheKey=()=> 'alpine-snow-roofs-v7';return m;
+ float cap=smoothstep(.38,.72,envNoise(vRoof.xz*.13));float seams=smoothstep(.88,.99,fract(vRoof.y*3.4+vRoof.x*.22));
+ vec3 slate=mix(vec3(.18,.20,.22),vec3(.34,.32,.30),envNoise(vRoof.xz*1.3))*(1.-seams*.3);
+ diffuseColor.rgb*=mix(slate,vec3(.94,.97,.99),cap);`);shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>','#include <lights_fragment_end>\nreflectedLight.directDiffuse*=1.-cloudMask(vRoof.xz*.00035)*.27;');};m.customProgramCacheKey=()=> 'alpine-snow-roofs-v8';return m;
 }

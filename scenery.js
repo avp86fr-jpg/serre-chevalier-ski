@@ -42,6 +42,8 @@ export function makeForests(world){
       const ang=r*Math.PI*6,spread=7+r*6,nx=x+Math.sin(ang)*spread,nz=z+Math.cos(ang)*spread,ny=world.height(nx,nz);
       if(Math.abs(ny-y)<6&&!world.nearPiste(nx,nz,14))trees.push([nx,nz,ny,h*(.85+seed()*.2), (r+.37)%1]);
       if(y<1900&&seed()>.28){const bx=x-Math.cos(ang)*10,bz=z+Math.sin(ang)*10,by=world.height(bx,bz);if(Math.abs(by-y)<6&&!world.nearPiste(bx,bz,14))trees.push([bx,bz,by,h*(.8+seed()*.25),(r+.61)%1]);}
+      // Extra stems on sunny south faces (+Z) in the larch belt down to the Guisane.
+      if(y<2000&&world.height(x,z-10)>y+1.6&&seed()>.22){const sx=x+Math.sin(ang+1.1)*8,sz=z+Math.cos(ang+1.1)*8,sy=world.height(sx,sz);if(Math.abs(sy-y)<7&&!world.nearPiste(sx,sz,14))trees.push([sx,sz,sy,h*(.82+seed()*.22),(r+.19)%1]);}
     }
   }
   world.treeObstacles=trees;
@@ -49,17 +51,17 @@ export function makeForests(world){
   const trunkGeo=new THREE.CylinderGeometry(.11,.24,1,6),foliageGeo=branchGeometry(),snowGeo=branchGeometry(true);
   const farGeo=combine([[new THREE.ConeGeometry(1.05,1.05,7,1,true).translate(0,.5,0),new THREE.Color(0x1a3f32)],[new THREE.ConeGeometry(.9,.62,7,1,true).translate(0,.66,0),new THREE.Color(0x16382d)],[new THREE.ConeGeometry(.72,.5,6,1,true).translate(0,.88,0),new THREE.Color(0x1f4a38)],[new THREE.ConeGeometry(.48,.36,6,1,true).translate(0,1.05,0),new THREE.Color(0xeff5f6)]]),farMat=maskedMaterial(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));
   const o=new THREE.Object3D(),color=new THREE.Color();
-  const larchNear=larchGeometry(),larchSnow=larchGeometry(false,true),larchFar=larchGeometry(true),larchMat=maskedMaterial(new THREE.MeshStandardMaterial({color:0x756650,roughness:1,side:THREE.DoubleSide})),branchMat=new THREE.MeshStandardMaterial({color:0x685947,roughness:1});
+  const larchNear=larchGeometry(),larchSnow=larchGeometry(false,true),larchFar=larchGeometry(true),larchMat=maskedMaterial(new THREE.MeshStandardMaterial({color:0x9a7840,roughness:1,side:THREE.DoubleSide})),branchMat=new THREE.MeshStandardMaterial({color:0x8d6a38,roughness:1});
   for(const mat of [bark,leaves,snowMat,farMat,larchMat,branchMat])windMaterial(mat,world.environment?.uniforms);
   for(const winterLarch of [true,false]){const species=trees.filter(p=>(p[2]<2000)===winterLarch);
   // Far trees use large batches. Near clusters only change small visibility buffers.
   for(const chunk of buckets(species,2048)){
     const far=new THREE.InstancedMesh(maskedGeometry(winterLarch?larchFar:farGeo,chunk.items.length),winterLarch?larchMat:farMat,chunk.items.length);
-    chunk.items.forEach((p,i)=>{const [x,z,y,h,r]=p;o.rotation.y=r*Math.PI*2;o.position.set(x,y,z);o.scale.set(winterLarch?h:h*(.18+r*.045),h,winterLarch?h:h*(.18+r*.045));o.updateMatrix();far.setMatrixAt(i,o.matrix);color.setScalar(.82+r*.18);far.setColorAt(i,color);p[5]=[far,i];});far.computeBoundingSphere();world.trees.add(freeze(far));
+    chunk.items.forEach((p,i)=>{const [x,z,y,h,r]=p;o.rotation.y=r*Math.PI*2;o.position.set(x,y,z);o.scale.set(winterLarch?h:h*(.18+r*.045),h,winterLarch?h:h*(.18+r*.045));o.updateMatrix();far.setMatrixAt(i,o.matrix);if(winterLarch)color.setRGB(.80+r*.16,.64+r*.10,.36+r*.08);else color.setScalar(.82+r*.18);far.setColorAt(i,color);p[5]=[far,i];});far.computeBoundingSphere();world.trees.add(freeze(far));
   }
   for(const chunk of buckets(species,512)){
     const near=new THREE.Group(),trunk=new THREE.InstancedMesh(trunkGeo,bark,chunk.items.length),foliage=new THREE.InstancedMesh(winterLarch?larchNear:foliageGeo,winterLarch?branchMat:leaves,chunk.items.length),snow=new THREE.InstancedMesh(winterLarch?larchSnow:snowGeo,snowMat,chunk.items.length);
-    chunk.items.forEach(([x,z,y,h,r],i)=>{o.rotation.y=r*Math.PI*2;o.position.set(x,y+h*(winterLarch?.475:.34),z);o.scale.set(h*.11,h*(winterLarch?.95:.68),h*.11);o.updateMatrix();trunk.setMatrixAt(i,o.matrix);o.position.y=y;o.scale.set(winterLarch?h:h*(.18+r*.045),h,winterLarch?h:h*(.18+r*.045));o.updateMatrix();foliage.setMatrixAt(i,o.matrix);snow.setMatrixAt(i,o.matrix);if(winterLarch)color.setScalar(.85+r*.15);else color.setRGB(.48+r*.32,.62+r*.23,.56+r*.25);foliage.setColorAt(i,color);});
+    chunk.items.forEach(([x,z,y,h,r],i)=>{o.rotation.y=r*Math.PI*2;o.position.set(x,y+h*(winterLarch?.475:.34),z);o.scale.set(h*.11,h*(winterLarch?.95:.68),h*.11);o.updateMatrix();trunk.setMatrixAt(i,o.matrix);o.position.y=y;o.scale.set(winterLarch?h:h*(.18+r*.045),h,winterLarch?h:h*(.18+r*.045));o.updateMatrix();foliage.setMatrixAt(i,o.matrix);snow.setMatrixAt(i,o.matrix);if(winterLarch)color.setRGB(.78+r*.18,.62+r*.12,.32+r*.08);else color.setRGB(.48+r*.32,.62+r*.23,.56+r*.25);foliage.setColorAt(i,color);});
     for(const mesh of [trunk,foliage,snow]){mesh.receiveShadow=true;mesh.computeBoundingSphere();freeze(mesh);}near.add(trunk,foliage,snow);near.visible=false;world.trees.add(near);world.forestChunks.push({...chunk,refs:chunk.items.map(p=>p[5]),items:undefined,near,detailed:false});
   }
   }
@@ -72,7 +74,7 @@ function roofGeometry(){
 export function makeVillages(world){
   world.buildings=new THREE.Group();world.buildings.name='Village buildings';world.scene.add(world.buildings);world.buildingChunks=[];
   const roofGeo=roofGeometry(),chimneyGeo=new THREE.BoxGeometry(.45,1.4,.5),roofMat=roofSnowMaterial(world.environment?.uniforms),chimneyMat=new THREE.MeshStandardMaterial({color:0x6a5346,roughness:1}),o=new THREE.Object3D(),color=new THREE.Color(),rand=seededRandom(241);
-  const farGeo=combine([[new THREE.BoxGeometry(1,1,1),new THREE.Color(0x8a6a48)],[roofGeometry().scale(1.12,.52,1.12).translate(0,.5,0),new THREE.Color(0xf0f5f7)]]),farMat=maskedMaterial(new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95}));
+  const farGeo=combine([[new THREE.BoxGeometry(1,1,1),new THREE.Color(0x8a6a48)],[roofGeometry().scale(1.12,.52,1.12).translate(0,.5,0),new THREE.Color(0x6d7278)]]),farMat=maskedMaterial(new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95}));
   const compileFar=farMat.onBeforeCompile;farMat.onBeforeCompile=shader=>{compileFar(shader);shader.vertexShader='attribute float roofRise;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('transformed*=instanceVisible;','if(position.y>.5)transformed.y=.5+(position.y-.5)/.42*roofRise;transformed*=instanceVisible;');};farMat.customProgramCacheKey=()=> 'alpine-far-roofs-v3';
   const buildings=world.data.buildings.map((p,i)=>[...p,undefined,world.data.architecture?.[i]]);
   for(const chunk of buckets(buildings,3072)){
@@ -103,6 +105,20 @@ export function makeVillages(world){
       const house=new THREE.Mesh(new THREE.BoxGeometry(w,4.2,d),i%2?naveMat:stoneMat);house.position.set(cx,cy+2.1,cz);house.rotation.y=a+Math.PI/2;
       const hr=new THREE.Mesh(roofGeometry(),snowRoof);hr.position.set(cx,cy+4.3,cz);hr.rotation.y=a+Math.PI/2;hr.scale.set(w*1.12,3,d*1.12);
       house.castShadow=hr.castShadow=house.receiveShadow=hr.receiveShadow=true;g.add(house,hr);
+    }
+    if(/brian[cç]on/i.test(v.name||'')){
+      const rampart=new THREE.MeshStandardMaterial({color:0x8a8680,roughness:.92}),keepMat=new THREE.MeshStandardMaterial({color:0x7a756c,roughness:.9});
+      let cx=x+90,cz=z+130,cy=world.height(cx,cz);
+      for(const [dx,dz] of [[70,90],[110,150],[40,160],[130,80]]){const ty=world.height(x+dx,z+dz);if(ty>cy){cx=x+dx;cz=z+dz;cy=ty;}}
+      const keep=new THREE.Mesh(new THREE.BoxGeometry(18,22,16),keepMat);keep.position.set(cx,cy+11,cz);
+      const keepRoof=new THREE.Mesh(roofGeometry(),snowRoof);keepRoof.position.set(cx,cy+22,cz);keepRoof.scale.set(20,7,18);
+      g.add(keep,keepRoof);
+      for(let i=0;i<8;i++){
+        const a=i*Math.PI/4+.12,len=i%2?52:38,wx=cx+Math.cos(a)*28,wz=cz+Math.sin(a)*28,wy=world.height(wx,wz);
+        const wall=new THREE.Mesh(new THREE.BoxGeometry(len,8.5,3.2),rampart);wall.position.set(wx,wy+4.2,wz);wall.rotation.y=a+Math.PI/2;
+        const bastion=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.8,10,8),rampart);bastion.position.set(cx+Math.cos(a)*46,world.height(cx+Math.cos(a)*46,cz+Math.sin(a)*46)+5,cz+Math.sin(a)*46);
+        wall.castShadow=bastion.castShadow=wall.receiveShadow=bastion.receiveShadow=true;g.add(wall,bastion);
+      }
     }
     landmarks.add(g);
   }
@@ -155,7 +171,7 @@ export function makeCableways(world){
     const loop=cableLoop(line,surface?.6:2.2);if(loop.length<2)continue;
     for(let i=1;i<loop.points.length;i++)cables.push(...loop.points[i-1].toArray(),...loop.points[i].toArray());
     supports.forEach((p,i)=>{const next=supports[Math.min(i+1,supports.length-1)],prev=supports[Math.max(i-1,0)];towers.push([p.x,p.z,p.y,Math.atan2(next.x-prev.x,next.z-prev.z),p.y-world.height(p.x,p.z),surface?2:6]);});
-    if(!surface){const a=supports[0],b=supports.at(-1),a2=supports[1]||b,b2=supports.at(-2)||a;stations.push([a.x,a.z,world.height(a.x,a.z),16,11,7.5,Math.atan2(a2.x-a.x,a2.z-a.z),gondola],[b.x,b.z,world.height(b.x,b.z),16,11,7.5,Math.atan2(b.x-b2.x,b.z-b2.z),gondola]);}
+    if(!surface){const a=supports[0],b=supports.at(-1),a2=supports[1]||b,b2=supports.at(-2)||a;stations.push([a.x,a.z,world.height(a.x,a.z),20,13,9.2,Math.atan2(a2.x-a.x,a2.z-a.z),gondola],[b.x,b.z,world.height(b.x,b.z),20,13,9.2,Math.atan2(b.x-b2.x,b.z-b2.z),gondola]);}
     if(surface)continue;
     const count=Math.max(2,Math.ceil(loop.length/110)),group=new THREE.Group(),cabins=new THREE.InstancedMesh(gondola?cabinGeo:chairGeo,dark,count),hangers=new THREE.InstancedMesh(hangerGeo,steel,count),canopies=new THREE.InstancedMesh(canopyGeo,snowMat,count);
     group.add(cabins,hangers);if(gondola){const glazing=new THREE.InstancedMesh(new THREE.BoxGeometry(1.83,.86,1.43),new THREE.MeshStandardMaterial({color:0x466b7b,metalness:.55,roughness:.16}),count);group.add(canopies,glazing);cabins.material=new THREE.MeshStandardMaterial({vertexColors:true,color:0xaf3029,roughness:.42,metalness:.25});group.userData.glazing=glazing;}group.visible=false;world.lifts.add(group);
@@ -210,10 +226,10 @@ export function updateScenery(world,dt,time=0){
   if(world.sceneryTimer<=0){
     world.sceneryTimer=.25;const ride=world.mode==='ride',position=world.camera.position;
     const zoom=world.orbit?.distance??2e4;if(world.trees)world.trees.visible=world.options.trees!==false&&(ride||zoom<13000);
-    for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?720:world.quality==='low'?200:420)+(c.detailed?90:0);const detailed=(ride||zoom<4000)&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
-    for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),detailed=ride&&d<(c.detailed?860:720);if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<450;c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220;}
+    for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?1200:world.quality==='low'?220:700)+(c.detailed?120:0);const detailed=(ride||zoom<5500)&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
+    for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),lim=world.quality==='low'?520:(c.detailed?1700:1400),detailed=(ride||zoom<6000)&&d<lim;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<(world.quality==='low'?180:650);c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220&&world.quality!=='low';}
     for(const c of world.liftChunks??[]){const near=ride&&distanceTo(c,position)<220;for(const mesh of c.group.children)mesh.castShadow=near;}
-    for(const r of world.liftRuns??[]){r.group.visible=world.options.lifts&&(ride||zoom<8000)&&r.box.distanceToPoint(position)<3200;for(const mesh of r.group.children)mesh.castShadow=r.box.distanceToPoint(position)<180;}
+    for(const r of world.liftRuns??[]){const reach=world.quality==='low'?1600:3200;r.group.visible=world.options.lifts&&(ride||zoom<8000)&&r.box.distanceToPoint(position)<reach;for(const mesh of r.group.children)mesh.castShadow=world.quality!=='low'&&r.box.distanceToPoint(position)<180;}
   }
   for(const r of world.liftRuns??[])if(r.group.visible&&dt>0)placeCarriers(r,time);
 }
@@ -231,18 +247,18 @@ export function makePisteFurniture(world){
       const step=Math.max(8,Math.min(20,len));
       for(let d=0;d<len;d+=step){
         dist+=step;const t=d/len,x=a[0]+(b[0]-a[0])*t,z=a[1]+(b[1]-a[1])*t;
-        if(dist>=nextSign){const side=(Math.floor(dist/40)%2?1:-1)* (8.5+(dist%7)*.15);signs.push([x+nx*side,z+nz*side,Math.atan2(tx,tz),grade]);nextSign+=70+((dist*13)%40);}
+        if(dist>=nextSign){const side=(Math.floor(dist/40)%2?1:-1)* (8.5+(dist%7)*.15);signs.push([x+nx*side,z+nz*side,Math.atan2(tx,tz),grade]);nextSign+=48+((dist*13)%28);}
         if(dist>=nextGun){const side=(Math.floor(dist/90)%2?1:-1)*11.5;guns.push([x+nx*side,z+nz*side,Math.atan2(tx,tz)]);nextGun+=160+((dist*7)%50);}
         if(dist>=nextNet && /black|red/.test(grade)){const side=-11;nets.push([x+nx*side,z+nz*side,Math.atan2(tx,tz)]);nextNet+=220;}
       }
     }
   }
   const o=new THREE.Object3D();
-  const pole=new THREE.CylinderGeometry(.05,.06,2.2,6),disc=new THREE.CircleGeometry(.38,10),plate=new THREE.BoxGeometry(.02,.55,.55);
+  const pole=new THREE.CylinderGeometry(.06,.07,2.7,6),disc=new THREE.CircleGeometry(.48,10),plate=new THREE.BoxGeometry(.03,.72,.72);
   const steel=new THREE.MeshStandardMaterial({color:0x8a9296,metalness:.45,roughness:.45}),white=new THREE.MeshStandardMaterial({color:0xf4f6f7,roughness:.7});
   const poles=new THREE.InstancedMesh(pole,steel,signs.length),plates=new THREE.InstancedMesh(plate,white,signs.length);
   const color=new THREE.Color();
-  signs.forEach(([x,z,angle,grade],i)=>{const y=world.height(x,z);o.rotation.set(0,angle,0);o.position.set(x,y+1.1,z);o.scale.set(1,1,1);o.updateMatrix();poles.setMatrixAt(i,o.matrix);o.position.y=y+2.15;o.updateMatrix();plates.setMatrixAt(i,o.matrix);color.set(COLORS[grade]||COLORS.red);plates.setColorAt(i,color);});
+  signs.forEach(([x,z,angle,grade],i)=>{const y=world.height(x,z);o.rotation.set(0,angle,0);o.position.set(x,y+1.35,z);o.scale.set(1,1,1);o.updateMatrix();poles.setMatrixAt(i,o.matrix);o.position.y=y+2.6;o.updateMatrix();plates.setMatrixAt(i,o.matrix);color.set(COLORS[grade]||COLORS.red);plates.setColorAt(i,color);});
   plates.instanceColor && (plates.instanceColor.needsUpdate=true);
   const gunPole=new THREE.CylinderGeometry(.07,.1,2.8,6),barrel=new THREE.CylinderGeometry(.09,.07,1.3,7),mound=new THREE.SphereGeometry(.7,7,5);
   const gunsG=new THREE.Group(),gp=new THREE.InstancedMesh(gunPole,steel,guns.length),gb=new THREE.InstancedMesh(barrel,new THREE.MeshStandardMaterial({color:0x2a3238,metalness:.5,roughness:.35}),guns.length),gm=new THREE.InstancedMesh(mound,new THREE.MeshStandardMaterial({color:0xeef4f6,roughness:.9}),guns.length);

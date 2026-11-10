@@ -50,18 +50,18 @@ export class MountainWorld{
     const material=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{...this.environment.uniforms,topColor:{value:new THREE.Color('#1d5eaf')},bottomColor:{value:new THREE.Color('#d7e8f6')}},vertexShader:'varying vec3 vPos;void main(){vPos=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`
       ${CLOUD_GLSL}
       uniform vec3 topColor;uniform vec3 bottomColor;uniform vec3 sunDir;varying vec3 vPos;
-      void main(){vec3 ray=normalize(vPos);float h=max(ray.y,0.0);vec3 sky=mix(bottomColor,topColor,pow(h,.55));
-      sky=mix(sky,vec3(.78,.88,.96),smoothstep(.0,.22,h)*exp(-h*5.)*.4);
+      void main(){vec3 ray=normalize(vPos);float h=max(ray.y,0.0);vec3 sky=mix(bottomColor,topColor,pow(h,.72));
+      sky=mix(sky,vec3(.62,.78,.94),smoothstep(.0,.18,h)*exp(-h*6.)*.22);
       vec3 light=normalize(sunDir);
       float sun=dot(ray,light);
       sky+=vec3(1.,.82,.55)*pow(max(sun,0.),12.)*.35;
       sky+=vec3(1.,.9,.7)*pow(max(sun,0.),48.)*.55;
       sky+=vec3(4.5,3.8,2.6)*smoothstep(.997,.9997,sun);
       float cirrus=pow(max(0.,sin(ray.x*28.+sin(ray.z*18.)*1.4)*sin(ray.z*14.+ray.x*5.)),8.);
-      sky=mix(sky,vec3(.95,.97,1.),cirrus*.18*smoothstep(.12,.55,h));
+      sky=mix(sky,vec3(.95,.97,1.),cirrus*.18*cloudCover*smoothstep(.12,.55,h));
       vec2 cu=ray.xz/max(ray.y,.1);
       float clouds=smoothstep(.35,.72,cloudField(cu*1.05))*smoothstep(.03,.16,ray.y)*(1.-smoothstep(.62,.95,ray.y));
-      clouds*=.75+.25*cloudField(cu*2.3+vec2(.2));
+      clouds*=(.75+.25*cloudField(cu*2.3+vec2(.2)))*smoothstep(.08,.55,cloudCover);
       float lit=clamp(dot(normalize(vec3(cu.x,1.,cu.y)),light)*.5+.5,0.,1.);
       vec3 cloudLight=mix(vec3(.55,.62,.72),vec3(1.,.98,.95),pow(lit,1.2));
       sky=mix(sky,cloudLight,clouds*.9);gl_FragColor=vec4(sky,1.);
@@ -139,6 +139,8 @@ export class MountainWorld{
   }
   makeLabels(){
     const root=document.getElementById('labels');this.labels=this.data.villages.map(v=>{const el=document.createElement('div');el.className='map-label';const dot=document.createElement('i'),name=document.createElement('span'),alt=document.createElement('small');name.textContent=v.name.toUpperCase();alt.textContent=v.alt.toLocaleString('en')+' m';el.append(dot,name,alt);root.appendChild(el);return{el,p:new THREE.Vector3(v.position[0],this.height(...v.position)+170,v.position[1])};});
+    const peaks=[{name:"Prorel",alt:2566,p:[1664,4960]},{name:"Pic de l'Eychauda",alt:2659,p:[-4032,1312]},{name:"Cucumelle",alt:2698,p:[-5024,1312]},{name:"Les Écrins",alt:4102,p:[-13554,3114]}];
+    for(const peak of peaks){if(!root)continue;const el=document.createElement('div');el.className='map-label peak-label';const dot=document.createElement('i'),name=document.createElement('span'),alt=document.createElement('small');name.textContent=peak.name.toUpperCase();alt.textContent=peak.alt.toLocaleString('en')+' m';el.append(dot,name,alt);root.appendChild(el);const y=this.height(...peak.p);this.labels.push({el,p:new THREE.Vector3(peak.p[0],(Number.isFinite(y)?y:peak.alt)+220,peak.p[1])});}
   }
   bindOrbit(){
     const canvas=this.renderer.domElement;let active=false,lastX=0,lastY=0,pointers=new Map(),lastPinch=0;
@@ -195,7 +197,7 @@ export class MountainWorld{
   startRide(discipline='challenge',ghost=null){this.character.initialized=this.ghostCharacter.initialized=false;this.character.state.clock=this.ghostCharacter.state.clock=0;this.discipline=discipline;this.ghostRecord=ghost;this.selectedGroup.visible=discipline!=='explore';this.sceneryTimer=0;this.mode='ride';this.skier.visible=true;this.blob.visible=true;this.gateGroup.visible=discipline!=='explore';this.pistes.visible=false;this.routeLine.visible=false;this.selectedGroup.children.slice(2).forEach(m=>m.visible=false);this.sun.castShadow=true;this.fx.reset();this.ghost.visible=false;this.snapCamera=true;this.makeCollectibles(this.path);this.path.gates.forEach(g=>{g.passed=g.hit=false;g.mesh.visible=discipline==='challenge';});this.terrain.timer=0;this.setWeather(this.weather);}
   stopRide(){this.mode='overview';this.selectedGroup.visible=true;if(this.travelCabin)this.travelCabin.visible=false;this.sceneryTimer=0;this.ghost.visible=false;this.skier.visible=this.blob.visible=this.gateGroup.visible=false;this.pistes.visible=this.options.pistes;this.routeLine.visible=true;this.selectedGroup.children.slice(2).forEach(m=>m.visible=true);this.sun.castShadow=false;this.spray.visible=false;this.sun.position.set(-12000,17000,-7000);this.sun.target.position.set(0,0,0);this.fx.reset();this.clearCollectibles();this.setWeather(this.weather);this.updateOverview(true);}
   setWeather(value){this.weather=['clear','golden','snow','overcast'].includes(value)?value:'clear';if(this.weatherLive==null&&typeof document!=='undefined'&&document.getElementById){const label=document.getElementById('weatherLabel');if(label)label.textContent={clear:'Bluebird day',golden:'Golden hour',snow:'Snowfall',overcast:'Overcast'}[this.weather];const icon=document.querySelector('.weather-icon');if(icon)icon.textContent={clear:'☀',golden:'☀',snow:'❄',overcast:'☁'}[this.weather];}}
-  setQuality(q){this.quality=q;this.character?.setQuality(q==='low');this.adaptive?.reset();this.sceneryTimer=0;this.terrain.quality=q;this.terrain.timer=0;const ratio=Math.min(devicePixelRatio,q==='auto'?this.adaptive.maxRatio:q==='high'?2:q==='low'?1:1.5);this.renderer.setPixelRatio(ratio);if(this.adaptive)this.adaptive.ratio=ratio;this.sun.shadow.mapSize.set(q==='high'?4096:2048,q==='high'?4096:2048);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}this.renderer.shadowMap.enabled=q!=='low';}
+  setQuality(q){this.quality=q;this.character?.setQuality(q==='low');this.life?.setQuality?.(q);this.adaptive?.reset();this.sceneryTimer=0;this.terrain.quality=q;this.terrain.timer=0;const ratio=Math.min(devicePixelRatio,q==='auto'?this.adaptive.maxRatio:q==='high'?2:q==='low'?1:1.5);this.renderer.setPixelRatio(ratio);if(this.adaptive)this.adaptive.ratio=ratio;this.sun.shadow.mapSize.set(q==='high'?2048:1024,q==='high'?2048:1024);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}this.renderer.shadowMap.enabled=q!=='low';if(this.snow?.material)this.snow.material.size=q==='low'?.12:.2;if(this.flare)this.flare.visible=q!=='low'&&this.flare.visible;}
   updateOverview(snap=false,dt=1/60){const {yaw,pitch,distance}=this.orbit;this.cameraPosition.set(this.target.x+Math.sin(yaw)*Math.cos(pitch)*distance,this.target.y+Math.sin(pitch)*distance,this.target.z-Math.cos(yaw)*Math.cos(pitch)*distance);this.camera.position.lerp(this.cameraPosition,snap?1:1-Math.exp(-dt*4.3));this.camera.lookAt(this.target);this.camera.fov=43;this.camera.near=3;this.camera.updateProjectionMatrix();}
   updateRide(run,input,dt,time){
     const feedback=rideFeedback(run,input,time,this.options.motion??.35);
@@ -226,14 +228,14 @@ export class MountainWorld{
     if(ghost){const q=this.path.sample(ghost.distance,ghost.offset),gap=Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z);if(gap>2.5&&gap<220){this.ghost.visible=true;this.ghost.position.set(q.x,q.y+.10,q.z);this.ghost.lookAt(q.x+q.tx,q.y+.1-q.slope,q.z+q.tz);const next=ghostAt(this.ghostRecord,run.time+.1)||ghost,speed=Math.max(0,(next.distance-ghost.distance)/.1);this.ghostCharacter.update({...ghost,speed,walking:false},{tuck:speed>10},dt,time,this.height,0);}}
   }
 
-  render(run,input,dt,time,frameDt=dt){if(this.mode==='overview'){this.updateOverview(false,dt);const w=this.container.clientWidth,h=this.container.clientHeight;for(const l of this.labels){const p=l.p.clone().project(this.camera);l.el.style.transform=`translate(${(p.x*.5+.5)*w}px,${(-p.y*.5+.5)*h}px) translate(-50%,-50%)`;l.el.style.display=p.z<1&&p.x>-1&&p.x<1&&p.y>-1&&p.y<1?'flex':'none';}}else if(run)this.updateRide(run,input,dt,time);if(this.furniture)this.furniture.visible=this.mode==='ride';this.terrain.update(this.camera,this.mode==='ride',dt,this.container.clientHeight*this.renderer.getPixelRatio());this.updateScenery(dt,time);this.life?.update(dt);this.environment?.update(dt);if(frameDt>0&&frameDt<=1.5)this.frameMS=lerp(this.frameMS??16.7,frameDt*1000,1-Math.exp(-frameDt*2));if(this.quality==='auto'&&this.adaptive){const ratio=this.adaptive.update(frameDt);if(ratio!==null)this.renderer.setPixelRatio(ratio);}this.updateFlare();this.renderer.render(this.scene,this.camera);}
+  render(run,input,dt,time,frameDt=dt){if(this.mode==='overview'){this.updateOverview(false,dt);const w=this.container.clientWidth,h=this.container.clientHeight;for(const l of this.labels){const p=l.p.clone().project(this.camera);l.el.style.transform=`translate(${(p.x*.5+.5)*w}px,${(-p.y*.5+.5)*h}px) translate(-50%,-50%)`;l.el.style.display=p.z<1&&p.x>-1&&p.x<1&&p.y>-1&&p.y<1?'flex':'none';}}else if(run)this.updateRide(run,input,dt,time);if(this.furniture)this.furniture.visible=this.mode==='ride'&&this.quality!=='low';this.terrain.update(this.camera,this.mode==='ride',dt,this.container.clientHeight*this.renderer.getPixelRatio());this.updateScenery(dt,time);this.life?.update(dt);this.environment?.update(dt);if(frameDt>0&&frameDt<=1.5)this.frameMS=lerp(this.frameMS??16.7,frameDt*1000,1-Math.exp(-frameDt*2));if(this.quality==='auto'&&this.adaptive){const ratio=this.adaptive.update(frameDt);if(ratio!==null)this.renderer.setPixelRatio(ratio);}this.updateFlare();this.renderer.render(this.scene,this.camera);}
   makeCollectibles(path){
     this.clearCollectibles();if(!path)return;
     this.pickupGroup=new THREE.Group();this.pickupGroup.name='Piste stars';this.scene.add(this.pickupGroup);
-    const geo=new THREE.OctahedronGeometry(.42,0),mat=new THREE.MeshStandardMaterial({color:0xffe082,emissive:0xc9a227,emissiveIntensity:.6,roughness:.32,metalness:.35});
+    const geo=new THREE.OctahedronGeometry(.55,0),mat=new THREE.MeshStandardMaterial({color:0xffe082,emissive:0xc9a227,emissiveIntensity:.6,roughness:.32,metalness:.35});
     this.pickups=[];
-    for(let d=80,i=0;d<path.length-40;d+=170,i++){
-      const p=path.sample(d,(i%2?1:-1)*Math.min(3.2,path.halfWidth*.22));
+    for(let d=70,i=0;d<path.length-40;d+=140,i++){
+      const p=path.sample(d,(i%2?1:-1)*Math.min(.55,path.halfWidth*.06));
       const mesh=new THREE.Mesh(geo,mat);mesh.position.set(p.x,p.y+1.2,p.z);this.pickupGroup.add(mesh);this.pickups.push({mesh,taken:false});
     }
   }
@@ -241,7 +243,7 @@ export class MountainWorld{
   collectPickups(run,dt){
     if(!this.pickups||!run||run.liftRide)return;run.collects=run.collects||0;
     const p=run.openWorld?run.position:this.path?this.path.sample(run.distance,run.offset):null;if(!p)return;
-    for(const token of this.pickups){if(token.taken)continue;token.mesh.rotation.y+=(dt||0)*2.4;if(Math.hypot(token.mesh.position.x-p.x,token.mesh.position.z-p.z)<2.5){token.taken=true;token.mesh.visible=false;run.collects++;}}
+    for(const token of this.pickups){if(token.taken)continue;token.mesh.rotation.y+=(dt||0)*2.4;if(Math.hypot(token.mesh.position.x-p.x,token.mesh.position.z-p.z)<6.5){token.taken=true;token.mesh.visible=false;run.collects++;}}
   }
   resize(){const w=this.container.clientWidth,h=this.container.clientHeight;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);}
 }

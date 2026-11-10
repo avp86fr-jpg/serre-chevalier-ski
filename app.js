@@ -223,7 +223,7 @@ function animate(now){
 function airEvent(event){
   const toastEl=$('gateToast');if(!toastEl)return;
   if(event.type==='crash'){toastEl.style.fontSize='22px';toastEl.textContent='CRASH';toastEl.style.color='#f5b6a3';}
-  else {const label=event.style==='clean'?'CLEAN LANDING':event.style==='heavy'?'HEAVY LANDING':'SKETCHY LANDING';const grab={mute:'MUTE',stalefish:'STALEFISH',safety:'SAFETY',indy:'INDY'}[event.grab]||'';const spin=Math.abs(event.spin||0),rot=spin>Math.PI*1.65?'360':spin>Math.PI*.7?'180':'';const combo=(run?.combo||0)>1?run.combo+'× COMBO':'';toastEl.style.fontSize='20px';toastEl.textContent=[label,grab,rot,event.airTime.toFixed(1)+'s',combo].filter(Boolean).join(' · ');toastEl.style.color=event.style==='clean'?'#e0f6a1':'#f6e2a1';}
+  else {const label=event.style==='clean'?'CLEAN LANDING':event.style==='heavy'?'HEAVY LANDING':'SKETCHY LANDING';const grab={mute:'MUTE',stalefish:'STALEFISH',safety:'SAFETY',indy:'INDY'}[event.grab]||'';const turns=Math.round(Math.abs(event.spin||0)/Math.PI),rot=turns>=2?(turns*180).toString():turns===1?'180':'';const combo=(run?.combo||0)>=1?run.combo+'× COMBO':'';toastEl.style.fontSize='22px';toastEl.textContent=[label,grab,rot,event.airTime.toFixed(1)+'s',combo].filter(Boolean).join(' · ');toastEl.style.color=event.style==='clean'?'#e0f6a1':'#f6e2a1';}
   toastEl.style.opacity=1;clearTimeout(gateTimer);gateTimer=setTimeout(()=>toastEl.style.opacity=0,window.__alpineCapture?2800:1300);
 }
 let weatherManual=false,lastLiveWeather=null,weatherPoll=null;
