@@ -207,6 +207,7 @@ export function updateScenery(world,dt,time=0){
   world.sceneryTimer=(world.sceneryTimer??0)-dt;
   if(world.sceneryTimer<=0){
     world.sceneryTimer=.25;const ride=world.mode==='ride',position=world.camera.position;
+    if(world.trees)world.trees.visible=world.options.trees!==false&&(ride||(world.orbit?.distance??2e4)<5200);
     for(const c of world.forestChunks??[]){const d=distanceTo(c,position),threshold=(world.quality==='high'?460:world.quality==='low'?180:300)+(c.detailed?80:0);const detailed=ride&&d<threshold;if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.near.visible=detailed;for(const mesh of c.near.children)mesh.castShadow=d<180;}
     for(const c of world.buildingChunks??[]){const d=distanceTo(c,position),detailed=ride&&d<(c.detailed?860:720);if(detailed!==c.detailed)showFar(c.refs,!detailed);c.detailed=detailed;c.group.visible=detailed;c.chimneys.visible=ride&&d<450;c.box.castShadow=c.roof.castShadow=c.chimneys.castShadow=ride&&d<220;}
     for(const c of world.liftChunks??[]){const near=ride&&distanceTo(c,position)<220;for(const mesh of c.group.children)mesh.castShadow=near;}
