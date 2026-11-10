@@ -2,7 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import {clamp,lerp} from './core.js';
 
 const DOWN=new THREE.Vector3(0,-1,0);
-const COLORS={shell:0xdf744a,panel:0xf0e9d8,dark:0x243945,seam:0xa44b33,sole:0x14252e,metal:0xa7b7bc,lime:0xd8eb98,lens:0x66b5c5};
+const COLORS={shell:0xc51f2a,panel:0xf3efe4,dark:0x1a2734,seam:0x8a1a22,sole:0x121820,metal:0xc9a15b,lime:0xe8d7a0,lens:0x3aa0c8,navy:0x1c3144,glove:0x1a1f24};
 const names=['pelvis','torso','head',...[-1,1].flatMap(s=>['thigh','shin','boot','ski','upperArm','forearm','hand','pole'].map(n=>n+s))];
 let shared;
 
@@ -29,13 +29,13 @@ function skiGeometry(low=false){
 }
 function visorGeometry(width,height,depth){
  const positions=[],indices=[],columns=12;
- for(let row=0;row<3;row++)for(let i=0;i<=columns;i++){const x=(i/columns-.5)*width;positions.push(x,(row/2-.5)*height,depth+Math.sqrt(.18**2-x*x));if(row&&i){const k=row*(columns+1)+i;indices.push(k-columns-2,k-columns-1,k-1,k-1,k-columns-1,k);}}
+ for(let row=0;row<3;row++)for(let i=0;i<=columns;i++){const x=(i/columns-.5)*width;positions.push(x,(row/2-.5)*height,depth+Math.sqrt(Math.max(0,.20**2-x*x)));if(row&&i){const k=row*(columns+1)+i;indices.push(k-columns-2,k-columns-1,k-1,k-1,k-columns-1,k);}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();return g;
 }
 function clothNormal(){
  const size=64,data=new Uint8Array(size*size*4);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){const i=(y*size+x)*4;data.set([128+Math.round(Math.sin(x*Math.PI/2)*13),128+Math.round(Math.sin(y*Math.PI/2)*13),253,255],i);}
- const texture=new THREE.DataTexture(data,size,size);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(5,5);texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.needsUpdate=true;return texture;
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){const i=(y*size+x)*4;data.set([128+Math.round(Math.sin(x*Math.PI/1.4)*26+Math.sin(y*.7)*8),128+Math.round(Math.sin(y*Math.PI/1.4)*26+Math.sin(x*.7)*8),240,255],i);}
+ const texture=new THREE.DataTexture(data,size,size);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(7,8);texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.needsUpdate=true;return texture;
 }
 function buildGeometry(bones,low=false){
  const buckets=Array.from({length:3},()=>({position:[],normal:[],uv:[],color:[],skinIndex:[],skinWeight:[],indices:[]}));
@@ -59,14 +59,19 @@ function buildGeometry(bones,low=false){
  for(const side of [-1,1]){
   box('torso',[.009,.12,.008],COLORS.seam,0,[side*.135,.15,.146],[0,0,-side*.33]);
   box('torso',[.032,.075,.014],COLORS.lime,0,[side*.18,.34,-.137],[0,0,side*.15]);
+  // quilted shell folds and sleeve cuff contrast
+  for(const y of [.10,.20,.30])box('torso',[.20,.012,.01],COLORS.seam,0,[side*.02,y,.148],[0,0,side*.04]);
  }
+ box('torso',[.16,.13,.02],COLORS.panel,0,[0,.28,.15]);
+ box('torso',[.11,.09,.012],COLORS.dark,0,[0,.27,.162]);
+ box('torso',[.09,.018,.008],COLORS.metal,1,[0,.30,.17]);
  // Helmet shell with ear pads, a wraparound strap, opaque mirrored lens and vents.
  add('head',new THREE.SphereGeometry(.154,12,8),COLORS.dark,0,[0,-.025,.005],[0,0,0],[1,1.08,1.12]);
  add('head',new THREE.SphereGeometry(.174,low?12:16,low?8:10,0,Math.PI*2,0,Math.PI*.60),COLORS.panel,1,[0,.025,0],[0,0,0],[1,1.04,1.12]);
  capsule('head',.075,.12,COLORS.sole,0,[0,-.115,-.015],[0,0,0],[1,.65,.9]);
  add('head',new THREE.TorusGeometry(.171,.017,4,20),COLORS.sole,1,[0,.015,0],[Math.PI/2,0,0],[1,1.1,1]);
- add('head',visorGeometry(.344,.105,.055),COLORS.sole,1,[0,.025,0]);
- add('head',visorGeometry(.308,.078,.071),COLORS.lens,2,[0,.025,0]);
+ add('head',visorGeometry(.372,.118,.06),COLORS.sole,1,[0,.03,0]);
+ add('head',visorGeometry(.336,.092,.082),COLORS.lens,2,[0,.03,0]);
  add('head',new THREE.SphereGeometry(.025,8,6),0xba8d73,0,[0,-.04,.185],[0,0,0],[.65,1,1]);
  for(const side of [-1,1]){
   capsule('head',.046,.045,COLORS.dark,1,[side*.16,-.055,-.005],[0,0,0],[.45,1,1]);
@@ -81,16 +86,16 @@ function buildGeometry(bones,low=false){
   for(const y of [.15,.23])box('boot'+side,[.18,.025,.045],COLORS.metal,1,[0,y,.035]);
   box('boot'+side,[.018,.1,.035],COLORS.lime,1,[side*.09,.20,-.01]);
   add('ski'+side,skiGeometry(low),COLORS.lime,1);
-  box('ski'+side,[.07,.006,.62],COLORS.dark,1,[0,.032,-.34]);box('ski'+side,[.08,.006,.18],COLORS.panel,1,[0,.032,.58],[0,side*.13,0]);
+  box('ski'+side,[.075,.007,.7],COLORS.dark,1,[0,.033,-.28]);box('ski'+side,[.085,.008,.22],COLORS.shell,1,[0,.034,.56],[0,side*.13,0]);box('ski'+side,[.086,.005,1.7],COLORS.metal,1,[0,.018,0]);
   box('ski'+side,[.14,.065,.12],COLORS.metal,1,[0,.065,.23]);box('ski'+side,[.145,.08,.12],COLORS.sole,1,[0,.072,-.16]);
   capsule('upperArm'+side,.079,.17,COLORS.shell,0,[0,-.13,0]);
   capsule('upperArm'+side,.083,.045,COLORS.panel,0,[0,-.035,0]);
   capsule('forearm'+side,.068,.15,COLORS.shell,0,[0,-.12,0]);
   capsule('forearm'+side,.071,.025,COLORS.dark,0,[0,-.235,0]);
-  capsule('hand'+side,.065,.045,COLORS.sole,1,[0,-.02,.018],[.25,0,0],[.8,1,1]);
+  capsule('hand'+side,.072,.055,COLORS.glove,1,[0,-.02,.02],[.25,0,0],[.95,1,1.05]);box('hand'+side,[.05,.04,.07],COLORS.glove,1,[0,-.05,.04]);
   add('pole'+side,new THREE.CylinderGeometry(.009,.007,1.06,6),COLORS.metal,1,[0,-.58,0]);
   capsule('pole'+side,.022,.085,COLORS.sole,1,[0,-.03,0]);
-  add('pole'+side,new THREE.TorusGeometry(.043,.008,4,8),COLORS.sole,1,[0,-1.04,0],[Math.PI/2,0,0]);
+  add('pole'+side,new THREE.TorusGeometry(.07,.011,5,10),COLORS.sole,1,[0,-1.04,0],[Math.PI/2,0,0]);add('pole'+side,new THREE.CircleGeometry(.068,10),COLORS.dark,1,[0,-1.04,0],[Math.PI/2,0,0]);
   add('pole'+side,new THREE.ConeGeometry(.01,.08,5),COLORS.sole,1,[0,-1.14,0],[Math.PI,0,0]);
  }
  const geometry=new THREE.BufferGeometry(),arrays={position:[],normal:[],uv:[],color:[],skinIndex:[],skinWeight:[]};let start=0;const indices=[];
@@ -108,7 +113,7 @@ export class Skier{
   this.scratch=Array.from({length:20},()=>new THREE.Vector3());this.q=new THREE.Quaternion();this.euler=new THREE.Euler();this.inverse=new THREE.Matrix4();this.forwardHint=new THREE.Vector3(0,0,1);
   this.contacts=[new THREE.Vector3(),new THREE.Vector3()];this.worldContacts=[{x:0,y:0,z:0,tx:0,tz:1},{x:0,y:0,z:0,tx:0,tz:1}];this.edge=0;
   this.pose(null,0,0);this.root.updateMatrixWorld(true);
-  if(!shared){const geometry=buildGeometry(this.bones),fabric=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.88,normalMap:clothNormal(),normalScale:new THREE.Vector2(.22,.22)}),gear=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.4,metalness:.18}),lens=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.1,metalness:.82});shared={geometry,lowGeometry:buildGeometry(this.bones,true),materials:[fabric,gear,lens]};}
+  if(!shared){const geometry=buildGeometry(this.bones),fabric=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.78,normalMap:clothNormal(),normalScale:new THREE.Vector2(.55,.55)}),gear=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.4,metalness:.18}),lens=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.06,metalness:.92});shared={geometry,lowGeometry:buildGeometry(this.bones,true),materials:[fabric,gear,lens]};}
   this.skeleton=new THREE.Skeleton(names.map(name=>this.bones[name]));
   this.mesh=new THREE.SkinnedMesh(ghost?shared.lowGeometry:shared.geometry,ghost?new THREE.MeshBasicMaterial({color:0xbfe8e0,transparent:true,opacity:.24,depthWrite:false}):shared.materials);
   this.mesh.name=ghost?'Ghost body':'Skier shell, equipment and lens';this.mesh.bind(this.skeleton);this.mesh.castShadow=!ghost;this.mesh.receiveShadow=!ghost;this.mesh.frustumCulled=false;this.root.add(this.mesh);this.root.visible=false;

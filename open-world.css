@@ -1,10 +1,10 @@
 .discipline-tabs{grid-template-columns:1.2fr 1fr 1fr}
 .discipline-tabs button{white-space:nowrap}
-.explore-status{position:absolute;top:204px;left:50%;transform:translateX(-50%);border-radius:10px;padding:10px 16px;text-align:center;max-width:calc(100% - 32px);pointer-events:none}
-.explore-status span{display:block;color:#e4f2ca;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}
-.explore-status small{display:block;color:#adcad4;font-size:10px;margin-top:5px}
-.explore-actions{position:absolute;top:286px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:6;max-width:calc(100% - 30px)}
-.explore-actions button{min-height:44px;border:1px solid #d5e7b44d;border-radius:9px;padding:9px 14px;color:#e4f2ca;font-size:12px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.explore-status{position:absolute;top:auto;bottom:248px;left:48px;transform:none;border-radius:8px;padding:6px 11px;text-align:left;max-width:240px;pointer-events:none;background:#102a3588}
+.explore-status span{display:block;color:#e4f2ca;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.explore-status small{display:block;color:#adcad4;font-size:9px;margin-top:3px}
+.explore-actions{position:absolute;top:auto;left:auto;right:42px;bottom:318px;transform:none;display:flex;flex-direction:column;align-items:stretch;gap:6px;z-index:6;max-width:200px}
+.explore-actions button{min-height:36px;border:1px solid #d5e7b44d;border-radius:8px;padding:7px 11px;color:#e4f2ca;font-size:11px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;background:#102a35cc}
 #app[data-explore="true"] .race-strip,#app[data-explore="true"] .ride-progress{display:none}
 #app[data-explore="true"] .mini-map{cursor:default}
 #worldMapDialog{width:min(1000px,calc(100% - 32px));max-width:1000px;padding:26px;overflow:hidden}
@@ -19,20 +19,20 @@
 .travel-list{overflow:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin}
 .travel-list button{display:block;width:100%;text-align:left;min-height:54px;padding:10px;border:0;border-bottom:1px solid #c9e1eb16;background:none;color:#e7f0e8;border-radius:5px}
 .travel-list button:hover{background:#cce99613}.travel-list strong{display:block;font-size:13px;font-weight:500}.travel-list small{display:block;font-size:10px;color:#a9c2cd;margin-top:5px}
-html[data-compact="true"] .explore-status{top:calc(var(--safe-top) + 139px);padding:7px 12px;max-width:calc(100% - 34px)}
-html[data-compact="true"] .explore-status span{font-size:11px;max-width:280px}
-html[data-compact="true"] .explore-status small{font-size:9px;margin-top:3px}
-html[data-compact="true"] .explore-actions{top:calc(var(--safe-top) + 192px);gap:6px}
-html[data-compact="true"] .explore-actions button{min-height:44px;font-size:11px;padding:8px 11px;max-width:185px}
+html[data-compact="true"] .explore-status{top:auto;left:max(14px,var(--safe-left));bottom:calc(var(--safe-bottom) + 248px);padding:5px 9px;max-width:160px}
+html[data-compact="true"] .explore-status span{font-size:10px;max-width:148px}
+html[data-compact="true"] .explore-status small{font-size:8px;margin-top:2px}
+html[data-compact="true"] .explore-actions{top:auto;left:auto;right:max(14px,var(--safe-right));bottom:calc(var(--safe-bottom) + 300px);gap:5px;max-width:140px}
+html[data-compact="true"] .explore-actions button{min-height:40px;font-size:10px;padding:6px 9px;max-width:140px}
 html[data-compact="true"] #worldMapDialog{padding:24px 16px 14px;width:calc(100% - 24px);max-width:900px}
 html[data-compact="true"] #worldMapDialog h2{font-size:22px;margin:10px 0}
 html[data-compact="true"] .map-description{font-size:11px;line-height:1.5;margin:0 0 12px}
 html[data-compact="true"] .world-map-layout{grid-template-columns:1fr;grid-template-rows:minmax(100px,1fr) minmax(120px,1fr);height:min(58dvh,550px);gap:10px}
 html[data-compact="true"] .travel-list button{min-height:52px}
-html[data-compact="true"][data-orientation="landscape"] .explore-status{top:calc(var(--safe-top) + 64px);padding:5px 11px;max-width:290px}
-html[data-compact="true"][data-orientation="landscape"] .explore-status span{font-size:10px;max-width:260px}
-html[data-compact="true"][data-orientation="landscape"] .explore-status small{font-size:8px}
-html[data-compact="true"][data-orientation="landscape"] .explore-actions{top:calc(var(--safe-top) + 112px)}
+html[data-compact="true"][data-orientation="landscape"] .explore-status{top:auto;left:max(12px,var(--safe-left));bottom:calc(var(--safe-bottom) + 12px);padding:4px 8px;max-width:150px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status span{font-size:9px;max-width:140px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status small{font-size:7px}
+html[data-compact="true"][data-orientation="landscape"] .explore-actions{top:auto;right:max(12px,var(--safe-right));bottom:calc(var(--safe-bottom) + 12px);max-width:130px}
 html[data-compact="true"][data-orientation="landscape"] #worldMapDialog{padding:16px}
 html[data-compact="true"][data-orientation="landscape"] #worldMapDialog>.eyebrow,html[data-compact="true"][data-orientation="landscape"] .map-description{display:none}
 html[data-compact="true"][data-orientation="landscape"] #worldMapDialog h2{font-size:19px;margin:0 0 10px}

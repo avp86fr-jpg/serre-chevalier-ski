@@ -21,7 +21,7 @@ export function snowMaterial(texture,environment){
       float boundaryAA=clamp(fwidth(piste.x)*.8,.42,6.);
       float groomed=smoothstep(-boundaryAA,boundaryAA,piste.x);
       float viewDistance=length(vViewPosition);
-      float closeSnow=1.-smoothstep(12.,65.,viewDistance);
+      float closeSnow=1.-smoothstep(16.,130.,viewDistance);
       float wind=groundNoise(vec2(vGround.x*.32+vGround.z*.13,vGround.z*.055));
       float drift=groundNoise(vGround.xz*.026)*.55+groundNoise(vGround.xz*.16)*.3+wind*.15;
       float rock=(1.-smoothstep(.46,.77,abs(normalize(vGroundNormal).y)))*(1.-groomed*.98);
@@ -30,10 +30,10 @@ export function snowMaterial(texture,environment){
       float lanes=snowWave(piste.y,5.4);
       float cord=snowWave(piste.y,.065)*closeSnow;
       float grain=groundNoise(vGround.xz*2.7);
-      vec3 powder=mix(vec3(.50,.67,.82),vec3(.88,.94,.99),drift);
+      vec3 powder=mix(vec3(.42,.62,.82),vec3(.86,.93,.99),drift);
       powder*=.94+.06*wind;
-      vec3 groomedSnow=vec3(.92,.96,.985)*(.955+.04*lanes+.035*cord);
-      groomedSnow*=1.-smoothstep(.91,.99,abs(snowWave(piste.y,5.4)))*.035;
+      vec3 groomedSnow=vec3(.94,.97,.995)*(.90+.10*lanes+.10*cord);
+      groomedSnow*=1.-smoothstep(.88,.99,abs(snowWave(piste.y,5.4)))*.08;
       float shoulder=exp(-pow((piste.x+.20)/max(.75,boundaryAA),2.));
       float bank=exp(-pow((piste.x+1.35)/max(.65,boundaryAA),2.));
       vec3 snow=mix(powder,groomedSnow,groomed);
@@ -49,7 +49,7 @@ export function snowMaterial(texture,environment){
       float nearDetail=1.-smoothstep(20.,110.,viewDistance);
       vec3 projection=abs(normalize(vGroundNormal));projection/=max(.001,projection.x+projection.y+projection.z);
       float powderHeight=groundNoise(vGround.xz*.42)*.14+wind*.12+grain*.012;
-      float packedHeight=cord*.0028+lanes*.003;
+      float packedHeight=cord*.012+lanes*.01;
       float stoneHeight=(groundNoise(vGround.zy*1.5)*projection.x+groundNoise(vGround.xy*1.5)*projection.z)*.10;
       float snowHeight=mix(powderHeight,packedHeight,groomed)+bank*.055;
       float microHeight=mix(snowHeight,stoneHeight,rock)*nearDetail;
@@ -57,14 +57,17 @@ export function snowMaterial(texture,environment){
       vec3 crossX=cross(surfaceY,normal),crossY=cross(normal,surfaceX);float surfaceDet=dot(surfaceX,crossX);
       normal=normalize(abs(surfaceDet)*normal-sign(surfaceDet)*(dFdx(microHeight)*crossX+dFdy(microHeight)*crossY));}`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-      float facing=pow(1.-clamp(dot(normal,geometryViewDir),0.,1.),3.);
-      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.02,.035,.05)*facing*(1.-rock);
-      float shade=1.-cloudMask(vGround.xz*.00035)*.24;reflectedLight.directDiffuse*=shade;reflectedLight.directSpecular*=shade;
-      float spark=pow(groundHash(floor(vGround.xz*22.)+floor(vGround.xz.yx*7.)),12.);
-      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.6)*closeSnow*(1.-rock);
-      reflectedLight.directSpecular+=vec3(.95,.97,1.)*spark*(.28+.45*groomed);`);
+      float facing=pow(1.-clamp(dot(normal,geometryViewDir),0.,1.),2.2);
+      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.05,.09,.16)*facing*(1.-rock);
+      vec3 sunDir=normalize(vec3(-160.,220.,-130.));
+      float shade=1.-cloudMask(vGround.xz*.00035)*.28;shade*=mix(.62,1.,pow(max(0.,dot(normal,sunDir)),.55));
+      reflectedLight.directDiffuse*=shade;reflectedLight.directSpecular*=shade;
+      float spark=pow(groundHash(floor(vGround.xz*28.)+floor(vGround.xz.yx*9.)),7.);
+      spark*=pow(max(0.,dot(normal,geometryViewDir)),1.25)*closeSnow*(1.-rock);
+      float glint=pow(max(0.,dot(reflect(-sunDir,normal),geometryViewDir)),42.)*closeSnow*(1.-rock);
+      reflectedLight.directSpecular+=vec3(1.,.98,.93)*(spark*(.55+groomed*.9)+glint*(.25+.7*groomed));`);
   };
-  material.customProgramCacheKey=()=> 'alpine-snow-v11';
+  material.customProgramCacheKey=()=> 'alpine-snow-v12';
   // Legacy callers supply a grain map; the world-space shader supersedes it.
   texture?.dispose();return material;
 }
@@ -149,11 +152,12 @@ export class TerrainTiles{
 
 export function branchGeometry(snow=false){
   const positions=[],normals=[];
-  for(let tier=0;tier<4;tier++){
-    const radius=(1-tier*.21)*(snow?.84:1),height=.42-tier*.025;
-    const g=new THREE.ConeGeometry(radius,height,7,1,true).toNonIndexed();
-    g.translate(0,.24+tier*.18+(snow?.045:0),0);
+  for(let tier=0;tier<7;tier++){
+    const radius=(1-tier*.12)*(snow?.86:1),height=.34-tier*.018;
+    const g=new THREE.ConeGeometry(radius,height,snow?6:8,1,true).toNonIndexed();
+    g.translate(0,.18+tier*.13+(snow?.055:0),0);
     positions.push(...g.attributes.position.array);normals.push(...g.attributes.normal.array);g.dispose();
   }
+  if(snow){const cap=new THREE.SphereGeometry(.22,7,5).toNonIndexed();cap.translate(0,1.08,0);positions.push(...cap.attributes.position.array);normals.push(...cap.attributes.normal.array);cap.dispose();}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));return g;
 }

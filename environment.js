@@ -7,7 +7,7 @@ export const CLOUD_GLSL=`
  float cloudField(vec2 p){p+=vec2(.006,.0025)*envTime;return envNoise(p)*.65+envNoise(p*2.07)*.35;}
  float cloudMask(vec2 p){return smoothstep(mix(.83,.23,cloudCover),mix(.99,.54,cloudCover),cloudField(p));}
 `;
-const PRESETS={clear:{sun:3.2,hemi:1.65,fog:.000075,cover:.32,wind:.35,top:'#4f87b5',bottom:'#d7e4e7',fogColor:'#adc7d6',sunColor:'#fff5da'},golden:{sun:2.9,hemi:1.65,fog:.000075,cover:.23,wind:.22,top:'#63879d',bottom:'#f3d5b8',fogColor:'#b7c1cc',sunColor:'#ffd3a0'},snow:{sun:.8,hemi:2.2,fog:.002,cover:.95,wind:.8,top:'#a1b9c8',bottom:'#dce5e8',fogColor:'#c5d5dd',sunColor:'#fff5da'},overcast:{sun:1.15,hemi:2.05,fog:.00055,cover:.88,wind:.5,top:'#7f97a8',bottom:'#d3dce1',fogColor:'#b7c4cd',sunColor:'#e8eef2'}};
+const PRESETS={clear:{sun:3.55,hemi:1.45,fog:.000062,cover:.28,wind:.35,top:'#2f6fb8',bottom:'#c9dcea',fogColor:'#8fb0c8',sunColor:'#fff3d0'},golden:{sun:3.05,hemi:1.5,fog:.00007,cover:.2,wind:.22,top:'#5a7fa0',bottom:'#f3d0aa',fogColor:'#b4b9c2',sunColor:'#ffc98a'},snow:{sun:.85,hemi:2.15,fog:.002,cover:.95,wind:.8,top:'#8eabc0',bottom:'#d8e2e8',fogColor:'#c0d0da',sunColor:'#fff5da'},overcast:{sun:1.2,hemi:1.95,fog:.00052,cover:.88,wind:.5,top:'#6f8aa0',bottom:'#cdd6dd',fogColor:'#a9b8c4',sunColor:'#e8eef2'}};
 export class AlpineEnvironment{
  constructor(world){this.world=world;this.time=0;this.blend=0;this.initialized=false;this.uniforms={envTime:{value:0},cloudCover:{value:.32},windPower:{value:.35},surfaceDetail:{value:1}};this.colors={top:new THREE.Color(),bottom:new THREE.Color(),fog:new THREE.Color(),sun:new THREE.Color()};this.makeDrift();}
  makeDrift(){

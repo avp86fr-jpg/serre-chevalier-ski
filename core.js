@@ -67,15 +67,15 @@ export function buildPath(route,height){
 export const PHYSICS_STEP=1/120;
 export function newRun(path,discipline='challenge'){
   for(const g of path.gates){g.passed=false;g.hit=false;g.quality=0;g.time=0;}
-  return {discipline,score:0,penalty:0,combo:0,maxCombo:0,nextGate:0,distance:0,totalDistance:0,speed:0,velocity:0,offset:0,lateral:0,edgeAngle:0,time:0,maxSpeed:0,gates:0,completed:false,started:false,path,accumulator:0,grade:0};
+  return {discipline,score:0,penalty:0,combo:0,maxCombo:0,nextGate:0,distance:0,totalDistance:0,speed:0,velocity:0,offset:0,lateral:0,edgeAngle:0,time:0,maxSpeed:0,gates:0,completed:false,started:false,path,accumulator:0,grade:0,airborne:false,vy:0,airY:0,airTime:0,spin:0,grab:'',crashed:0,jumpHeld:false,landing:''};
 }
 const delta=(a,b)=>({x:b.x-a.x,y:b.y-a.y,z:b.z-a.z});
 const magnitude=p=>Math.hypot(p.x,p.y,p.z);
 function stepRun(run,input,dt){
-  const path=run.path,steer=Number.isFinite(input.steer)?clamp(input.steer,-1,1):Number(!!input.right)-Number(!!input.left),brake=!!input.brake,tuck=!!input.tuck;
+  const path=run.path,steer=Number.isFinite(input.steer)?clamp(input.steer,-1,1):Number(!!input.right)-Number(!!input.left),brake=!!input.brake,tuck=!!input.tuck,jump=!!input.jump;
   const limit=path.halfWidth-1,edge=clamp((Math.abs(run.offset)-limit+3)/3,0,1);
   const requested=steer*.48*(steer*run.offset>0?1-edge:1);
-  run.edgeAngle=lerp(run.edgeAngle,requested,1-Math.exp(-5*dt));
+  run.edgeAngle=lerp(run.edgeAngle,requested,1-Math.exp(-9*dt));
   let dd=Math.cos(run.edgeAngle),doo=Math.sin(run.edgeAngle);
   if(doo*run.offset>0)doo*=1-edge;
   const p=path.sample(run.distance,run.offset);
@@ -87,12 +87,13 @@ function stepRun(run,input,dt){
   run.softSnow=clamp((Math.abs(run.offset)/path.halfWidth-.67)/.26,0,1);
   const gravity=9.81*sine,friction=(.035+edge*.09+run.softSnow*.08)*9.81*cosine;
   const drag=(tuck&&run.velocity>4?.0028:.0055)*run.velocity**2;
-  const edging=Math.abs(run.edgeAngle)*1.6+run.softSnow*.0018*run.velocity**2;
+  const carved=Math.abs(run.edgeAngle)>.14&&!brake?1:0,skid=brake||(Math.abs(steer)>.7&&Math.abs(run.edgeAngle)<.22)?1:0;
+  const edging=(skid?Math.abs(run.edgeAngle)*2.1:Math.abs(run.edgeAngle)*.55)+run.softSnow*.0018*run.velocity**2;
   const push=tuck&&!brake&&run.velocity<4?3.2*(1-run.velocity/5):0;
   const curvature=Math.max(path.curvature(run.distance),path.curvature(run.distance+run.velocity*.8));
   const bendSpeed=Math.sqrt(5/Math.max(.00001,curvature));
   const cornerBrake=clamp((run.velocity-bendSpeed)*2,0,10);
-  let acceleration=gravity+push-friction-drag-edging-cornerBrake-(brake?12:0);
+  let acceleration=gravity+push-friction-drag-edging-cornerBrake-(brake?12:0)+(carved?.35:0);
   // Holding push can herringbone up a short uphill traverse at walking speed.
   // This is deliberate player locomotion; release W and gravity takes over.
   run.walking=tuck&&!brake&&sine<-.15&&run.velocity<1.6;
@@ -112,6 +113,13 @@ function stepRun(run,input,dt){
   if(nextD>=path.length&&actual<travel&&travel>0){const endSpeed=Math.sqrt(Math.max(0,oldVelocity**2+2*acceleration*actual));usedDt=Math.min(dt,2*actual/(oldVelocity+endSpeed||1));}
   run.distance=nextD;run.offset=nextO;run.velocity=Math.max(0,oldVelocity+acceleration*usedDt);run.speed=actual/(usedDt||dt);run.lateral=doo*nextVelocity;
   run.totalDistance+=actual;run.time+=usedDt;run.maxSpeed=Math.max(run.maxSpeed,run.speed);run.grade=Math.asin(sine)*180/Math.PI;if(actual>1e-6)run.heading=Math.atan2(q.x-p.x,q.z-p.z);run.started=true;
+  const jumpEdge=jump&&!run.jumpHeld;run.jumpHeld=jump;
+  if(run.airborne){
+    run.vy-=9.81*usedDt;run.airY+=run.vy*usedDt;run.airTime+=usedDt;run.grab=tuck||input.grab?'safety':'';
+    if(run.airY<=0&&run.vy<=0.4){const impact=Math.max(0,-run.vy);run.airborne=false;run.airY=0;run.vy=0;run.grab='';run.landing=impact>7.5?'crash':impact>4?'heavy':'clean';if(run.landing==='crash'){run.crashed=1.2;run.velocity*=.25;run.combo=0;}run.airTime=0;}
+  }else if(jumpEdge&&!run.walking&&run.velocity>3.2&&run.discipline!=='challenge'){
+    run.airborne=true;run.airY=.02;run.vy=2.05+run.velocity*.055;run.airTime=0;run.landing='';
+  }else{run.airY=0;run.vy=0;run.airborne=false;}
   const events=[];
   while(run.nextGate<path.gates.length&&run.distance>=path.gates[run.nextGate].distance){
     const index=run.nextGate++,gate=path.gates[index],fraction=clamp((gate.distance-previous)/(run.distance-previous||1),0,1),offset=lerp(previousOffset,run.offset,fraction);
