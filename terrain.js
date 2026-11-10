@@ -9,30 +9,35 @@ export function snowMaterial(texture,environment){
   // The field is attached before the first render and shared across every LOD.
   material.userData.pisteUniforms=emptyPisteUniforms();
   material.onBeforeCompile=shader=>{
-    Object.assign(shader.uniforms,environment||{envTime:{value:0},cloudCover:{value:0},surfaceDetail:{value:1},hazeStart:{value:14000},hazeEnd:{value:90000},sunDir:{value:{x:-.5,y:.7,z:-.4}}},material.userData.pisteUniforms);
+    Object.assign(shader.uniforms,environment||{envTime:{value:0},cloudCover:{value:0},surfaceDetail:{value:1},hazeStart:{value:14000},hazeEnd:{value:90000},sunDir:{value:{x:-.5,y:.7,z:-.4}},forestMap:{value:null},forestOrigin:{value:{x:-9728,y:-7680}},forestSize:{value:{x:19456,y:15872}}},material.userData.pisteUniforms);
     shader.vertexShader='varying vec3 vGround; varying vec3 vGroundNormal;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGround=(modelMatrix*vec4(position,1.0)).xyz;vGroundNormal=normalize(mat3(modelMatrix)*normal);');
     shader.fragmentShader=CLOUD_GLSL+PISTE_GLSL+`varying vec3 vGround; varying vec3 vGroundNormal;
       uniform float hazeStart;uniform float hazeEnd;uniform vec3 sunDir;
+      uniform sampler2D forestMap;uniform vec2 forestOrigin;uniform vec2 forestSize;
       float groundHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float groundNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(groundHash(i),groundHash(i+vec2(1,0)),f.x),mix(groundHash(i+vec2(0,1)),groundHash(i+vec2(1,1)),f.x),f.y);}
     `+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       vec4 piste=pisteAt(vGround.xz);
-      float boundaryAA=clamp(fwidth(piste.x)*.8,.42,6.);
-      float groomed=smoothstep(-boundaryAA,boundaryAA,piste.x);
       float viewDistance=length(vViewPosition);
       float closeSnow=1.-smoothstep(16.,130.,viewDistance);
       float midDetail=1.-smoothstep(220.,1600.,viewDistance);
       float farSoft=smoothstep(1400.,7500.,viewDistance);
+      float pisteSoft=smoothstep(700.,8000.,viewDistance);
+      float boundaryAA=clamp(fwidth(piste.x)*mix(.9,5.,pisteSoft)+mix(.5,24.,pisteSoft),.5,36.);
+      float groomed=smoothstep(-boundaryAA,boundaryAA,piste.x);
       vec3 nGround=normalize(vGroundNormal);
       float slope=1.-abs(nGround.y);
-      float slopeAA=max(fwidth(slope)*2.8,mix(.035,.1,farSoft));
-      float rock=smoothstep(.36-slopeAA,.60+slopeAA,slope)*(1.-groomed*.98);
-      float cliff=smoothstep(.52,.78,slope)*(1.-groomed*.98);
-      float scree=smoothstep(.30,.48,slope)*(1.-smoothstep(.54,.76,slope))*(1.-groomed)*smoothstep(1450.,2250.,vGround.y);
-      float crest=smoothstep(.0016,.018,length(vec2(dFdx(nGround.y),dFdy(nGround.y))))*smoothstep(.16,.42,slope);
-      rock=max(rock,max(cliff,crest*mix(.4,1.,1.-farSoft*.35)));
+      float slopeAA=max(fwidth(slope)*2.8,mix(.02,.08,farSoft));
+      // 1-n.y is ~0.18 at 35° and ~0.23 at 40°. Snow remains on flatter ledges.
+      float rock=smoothstep(.16-slopeAA,.26+slopeAA,slope)*(1.-groomed*.98);
+      float cliff=smoothstep(.28,.48,slope)*(1.-groomed*.98);
+      float scree=smoothstep(.18,.30,slope)*(1.-smoothstep(.32,.50,slope))*(1.-groomed)*smoothstep(1450.,2350.,vGround.y);
+      float crest=smoothstep(.0012,.016,length(vec2(dFdx(nGround.y),dFdy(nGround.y))))*smoothstep(.14,.32,slope);
+      float ledge=pow(groundNoise(vGround.xz*.22+vGround.y*.08),2.4)*smoothstep(.46,.20,slope);
+      rock=max(rock,max(cliff,crest*mix(.5,1.,1.-farSoft*.25)));
+      rock*=1.-ledge*.85;
       float wind=groundNoise(vec2(vGround.x*.32+vGround.z*.13,vGround.z*.055))*midDetail;
       float drift=mix(.62,groundNoise(vGround.xz*.026)*.55+groundNoise(vGround.xz*.16)*.3+wind*.15,midDetail);
       float outcrop=smoothstep(.52,.84,groundNoise(vGround.xz*.007)+slope*.65)*midDetail*(1.-groomed*.98);
@@ -48,23 +53,21 @@ export function snowMaterial(texture,environment){
       groomedSnow*=1.-smoothstep(.88,.99,abs(snowWave(piste.y,5.4)))*.08*midDetail;
       float shoulder=exp(-pow((piste.x+.20)/max(.75,boundaryAA),2.));
       float bank=exp(-pow((piste.x+1.35)/max(.65,boundaryAA),2.));
-      vec3 snow=mix(powder,groomedSnow,groomed);
-      snow*=1.-shoulder*.22*mix(.35,1.,midDetail);snow+=vec3(.045,.05,.055)*bank*mix(.3,1.,midDetail);
-      vec3 stone=mix(vec3(.28,.27,.26),vec3(.46,.43,.39),strata);
-      stone=mix(stone,vec3(.20,.195,.19),cliff);
-      stone=mix(stone,vec3(.34,.32,.29),groundNoise(vGround.xz*.04)*midDetail);
+      vec3 snow=mix(powder,groomedSnow,groomed*(1.-pisteSoft*.72));
+      snow*=1.-shoulder*.22*mix(.35,1.,midDetail)*(1.-pisteSoft*.65);snow+=vec3(.045,.05,.055)*bank*mix(.3,1.,midDetail)*(1.-pisteSoft);
+      vec3 stone=mix(vec3(.22,.21,.20),vec3(.38,.35,.32),strata);
+      stone=mix(stone,vec3(.13,.125,.12),cliff);
+      stone=mix(stone,vec3(.30,.28,.26),groundNoise(vGround.xz*.04)*midDetail);
       stone*=1.-fissure*.45;
-      vec3 screeCol=mix(vec3(.40,.36,.32),vec3(.52,.47,.40),groundNoise(vGround.xz*.09));
-      vec3 ground=mix(snow,stone,rock*.96);
-      ground=mix(ground,screeCol,scree*(1.-cliff)*.62*mix(.35,1.,1.-farSoft));
-      float forestAlbedo=smoothstep(4500.,9500.,viewDistance);
-      float forest=(1.-groomed)*(1.-rock)*smoothstep(2080.,1960.,vGround.y)*smoothstep(1180.,1380.,vGround.y)*(1.-smoothstep(.20,.38,slope));
-      float cover=groundNoise(vGround.xz*.0016);
-      cover=mix(smoothstep(.20,.52,cover*.65+.38),smoothstep(.16,.62,cover*.8+groundNoise(vGround.xz*.006)*.22),1.-farSoft);
-      forest*=cover;
-      float southFace=smoothstep(-.08,.42,nGround.z);
-      vec3 canopy=mix(mix(vec3(.11,.18,.11),vec3(.17,.23,.13),cover),mix(vec3(.32,.26,.10),vec3(.46,.35,.12),cover),southFace);
-      ground=mix(ground,canopy,forest*forestAlbedo*.84);
+      stone=mix(stone,mix(snow,stone,.35),ledge);
+      vec3 screeCol=mix(vec3(.36,.32,.28),vec3(.48,.43,.36),groundNoise(vGround.xz*.09));
+      vec3 ground=mix(snow,stone,rock*.98);
+      ground=mix(ground,screeCol,scree*(1.-cliff)*.7*mix(.45,1.,1.-farSoft));
+      vec2 forestUv=(vGround.xz-forestOrigin)/max(forestSize,vec2(1.));
+      float stand=smoothstep(.12,.55,texture2D(forestMap,forestUv).r);
+      float forestShade=stand*(1.-groomed)*(1.-cliff)*smoothstep(200.,900.,viewDistance)*smoothstep(2240.,2080.,vGround.y);
+      // Winter: ground under the trees stays snow, with only a cool blue shade. No khaki/olive canopy tint.
+      ground=mix(ground,ground*vec3(.86,.91,.96),forestShade*.22);
       diffuseColor.rgb*=ground;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
@@ -108,7 +111,7 @@ export function snowMaterial(texture,environment){
       reflectedLight.indirectDiffuse=mix(reflectedLight.indirectDiffuse,air*.7,haze*.5);
       reflectedLight.directSpecular*=1.-haze*.6;`);
   };
-  material.customProgramCacheKey=()=> 'alpine-snow-v19';
+  material.customProgramCacheKey=()=> 'alpine-snow-v22';
   // Legacy callers supply a grain map; the world-space shader supersedes it.
   texture?.dispose();return material;
 }
