@@ -1,14 +1,30 @@
 import * as THREE from './vendor/three.module.js';
 import {clamp,lerp,seededRandom,DIFFICULTIES} from './core.js';
 import {pisteWidth} from './open-world.js';
+import {Skier,SUIT_KITS} from './skier.js';
 function routeLine(route,height){const points=[],distances=[0];for(let i=1;i<route.points.length;i++){const a=route.points[i-1],b=route.points[i],steps=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/8));for(let j=0;j<steps;j++){const x=lerp(a[0],b[0],j/steps),z=lerp(a[1],b[1],j/steps);points.push({x,y:height(x,z),z});}}const end=route.points.at(-1);points.push({x:end[0],y:height(...end),z:end[1]});if(points[0].y<points.at(-1).y)points.reverse();for(let i=1;i<points.length;i++)distances.push(distances.at(-1)+Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y,points[i].z-points[i-1].z));return{route,points,distances,length:distances.at(-1)};}
 export function lineAt(line,d){d=clamp(d,0,line.length);let a=0,b=line.points.length-1;while(b-a>1){const m=(a+b)>>1;if(line.distances[m]<d)a=m;else b=m;}const p=line.points[a],q=line.points[b],t=(d-line.distances[a])/(line.distances[b]-line.distances[a]||1);return{x:lerp(p.x,q.x,t),y:lerp(p.y,q.y,t),z:lerp(p.z,q.z,t),heading:Math.atan2(q.x-p.x,q.z-p.z)};}
 function joined(parts){const position=[],normal=[];for(const geometry of parts){const g=geometry.index?geometry.toNonIndexed():geometry;position.push(...g.attributes.position.array);normal.push(...g.attributes.normal.array);if(g!==geometry)g.dispose();geometry.dispose();}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(position,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(normal,3));return g;}
 export class MountainLife{
  constructor(world){this.world=world;this.lines=world.data.routes.map(r=>routeLine(r,world.height));this.timer=0;this.clock=0;this.lastView=null;this.makeMarkers();
-  const torso=joined([new THREE.CapsuleGeometry(.22,.36,3,6).translate(0,1.2,0),new THREE.CapsuleGeometry(.075,.4,3,5).rotateZ(.25).translate(-.32,1.08,0),new THREE.CapsuleGeometry(.075,.4,3,5).rotateZ(-.25).translate(.32,1.08,0)]),gear=joined([new THREE.SphereGeometry(.18,8,6).translate(0,1.68,0),new THREE.BoxGeometry(.12,.05,1.7).translate(-.2,.08,.15),new THREE.BoxGeometry(.12,.05,1.7).translate(.2,.08,.15),new THREE.CapsuleGeometry(.1,.5,3,5).translate(-.16,.61,0),new THREE.CapsuleGeometry(.1,.5,3,5).translate(.16,.61,0)]);
-  this.bodies=new THREE.InstancedMesh(torso,new THREE.MeshStandardMaterial({roughness:.85}),48);this.gear=new THREE.InstancedMesh(gear,new THREE.MeshStandardMaterial({color:0x344c59,roughness:.6}),48);this.bodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.gear.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.bodies.frustumCulled=this.gear.frustumCulled=false;this.bodies.count=this.gear.count=0;world.scene.add(this.bodies,this.gear);this.pose=new THREE.Object3D();this.color=new THREE.Color();this.population=[];const rand=seededRandom(708);
-  for(const line of this.lines)for(let i=0;i<3;i++)this.population.push({line,phase:rand()*line.length,speed:4+rand()*7,offset:(rand()-.5)*Math.min(8,pisteWidth(line.route)*.6),color:rand()});
+  const kits=Object.keys(SUIT_KITS).filter(k=>k!=='hero');
+  this.actors=[];for(let i=0;i<10;i++){const skier=new Skier({kit:kits[i%kits.length]});skier.root.visible=false;skier.mesh.castShadow=false;world.scene.add(skier.root);this.actors.push(skier);}this.bodies=new THREE.InstancedMesh(new THREE.BoxGeometry(.1,.1,.1),new THREE.MeshBasicMaterial({visible:false}),16);this.bodies.count=0;this.bodies.visible=false;this.bodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.pose=new THREE.Object3D();
+  this.population=[];const rand=seededRandom(708);
+  for(const line of this.lines)for(let i=0;i<3;i++)this.population.push({line,phase:rand()*line.length,speed:4+rand()*7,offset:(rand()-.5)*Math.min(8,pisteWidth(line.route)*.6),color:rand(),kit:kits[(this.population.length)%kits.length]});
+  this.makeBashers(rand);
+ }
+ makeBashers(rand){
+  const cab=joined([new THREE.BoxGeometry(1.8,1.15,2.4).translate(0,.95,0),new THREE.BoxGeometry(1.6,.55,1.1).translate(0,1.65,-.15),new THREE.BoxGeometry(2.6,.18,1.15).translate(0,.55,1.55),new THREE.BoxGeometry(2.7,.08,.35).translate(0,.28,2.05)]);
+  const tracks=joined([new THREE.BoxGeometry(2.2,.45,3.3).translate(0,.28,0),new THREE.BoxGeometry(.18,.22,3.2).translate(-.95,.18,0),new THREE.BoxGeometry(.18,.22,3.2).translate(.95,.18,0)]);
+  const paint=new THREE.MeshStandardMaterial({color:0xd6a31e,roughness:.45,metalness:.15}),steel=new THREE.MeshStandardMaterial({color:0x2c3338,roughness:.55,metalness:.35});
+  this.basherGroup=new THREE.Group();this.basherGroup.name='Piste bashers';this.world.scene.add(this.basherGroup);
+  this.bashers=[];
+  const long=this.lines.filter(l=>l.length>600).sort((a,b)=>b.length-a.length).slice(0,4);
+  for(let i=0;i<Math.min(3,long.length);i++){
+    const line=long[i],group=new THREE.Group(),body=new THREE.Mesh(cab,paint),gear=new THREE.Mesh(tracks,steel),beacon=new THREE.Mesh(new THREE.SphereGeometry(.11,8,6),new THREE.MeshStandardMaterial({color:0xff6a2a,emissive:0xff3c00,emissiveIntensity:1.2,roughness:.4}));
+    beacon.position.set(0,2.05,.2);body.castShadow=gear.castShadow=true;group.add(body,gear,beacon);group.visible=false;this.basherGroup.add(group);
+    this.bashers.push({line,phase:rand()*(line.length*.7)+40,speed:1.8+rand()*1.4,offset:(rand()-.5)*2,group,beacon});
+  }
  }
 
  makeMarkers(){
@@ -39,16 +55,29 @@ export class MountainLife{
 
  update(dt){const w=this.world;this.clock+=Math.max(0,dt);this.timer-=dt;const active=w.mode==='ride';const p=w.camera.position;
   if(this.timer<=0||!this.lastView||Math.hypot(p.x-this.lastView.x,p.z-this.lastView.z)>150){this.timer=.25;this.lastView={x:p.x,z:p.z};this.updateMarkers(active);}
-  if(!active||w.options.crowds===false){this.bodies.count=this.gear.count=0;return;}
-  if(dt===0&&this.bodies.count)return;this.crowdDue=(this.crowdDue||0)-dt;if(this.crowdDue>0&&this.bodies.count)return;this.crowdDue=w.options.mobile?1/24:1/30;
-  const budget=w.quality==='low'?12:w.options.mobile?24:48,candidates=[];
-  for(const a of this.population){const d=(a.phase+this.clock*a.speed)%a.line.length,q=lineAt(a.line,d),distance=Math.hypot(q.x-p.x,q.z-p.z);if(distance<600&&d>20&&d<a.line.length-20)candidates.push({a,q,distance,d});}
-  candidates.sort((a,b)=>a.distance-b.distance);let count=0;
-  for(const {a,q,d}of candidates){if(count>=budget)break;const turn=Math.sin(this.clock*.65+a.phase)*.8,offset=a.offset+turn,x=q.x-Math.cos(q.heading)*offset,z=q.z+Math.sin(q.heading)*offset;
-   if(Math.hypot(x-w.skier.position.x,z-w.skier.position.z)<7)continue;
-   const ahead=lineAt(a.line,Math.min(a.line.length,d+3)),slope=(ahead.y-q.y)/Math.max(1,Math.hypot(ahead.x-q.x,ahead.z-q.z));this.pose.position.set(x,w.height(x,z)+.10,z);this.pose.rotation.set(-Math.atan(slope),q.heading,turn*.06,'YXZ');this.pose.scale.setScalar(.92+a.color*.16);this.pose.updateMatrix();this.bodies.setMatrixAt(count,this.pose.matrix);this.gear.setMatrixAt(count,this.pose.matrix);this.color.setHSL(a.color,.65,.52);this.bodies.setColorAt(count,this.color);count++;
+  if(!active||w.options.crowds===false){for(const s of this.actors)s.root.visible=false;if(this.basherGroup)this.basherGroup.visible=false;this.bodies.count=0;return;}
+  if(this.basherGroup)this.basherGroup.visible=true;
+  for(const b of this.bashers||[]){const d=(b.phase+this.clock*b.speed)%b.line.length,q=lineAt(b.line,d),ahead=lineAt(b.line,Math.min(b.line.length,d+5));
+    const x=q.x-Math.cos(q.heading)*b.offset,z=q.z+Math.sin(q.heading)*b.offset,y=w.height(x,z);
+    const visible=Math.hypot(x-p.x,z-p.z)<900;b.group.visible=visible;
+    if(visible){const slope=(ahead.y-q.y)/Math.max(1,Math.hypot(ahead.x-q.x,ahead.z-q.z));b.group.position.set(x,y,z);b.group.rotation.set(-Math.atan(slope),q.heading,0,'YXZ');if(b.beacon?.material)b.beacon.material.emissiveIntensity=.7+.7*Math.abs(Math.sin(this.clock*8));}
   }
-  this.bodies.count=this.gear.count=count;this.bodies.instanceMatrix.needsUpdate=this.gear.instanceMatrix.needsUpdate=true;if(this.bodies.instanceColor)this.bodies.instanceColor.needsUpdate=true;
+  this.crowdDue=(this.crowdDue||0)-dt;if(this.crowdDue>0&&dt!==0){/* still keep visible actors this frame */ }else this.crowdDue=w.options.mobile?1/20:1/24;
+  if(this.crowdDue<=1/20||dt===0){
+   const budget=Math.min(this.actors.length,w.quality==='low'?6:w.options.mobile?8:10),candidates=[];
+   for(const a of this.population){const d=(a.phase+this.clock*a.speed)%a.line.length,q=lineAt(a.line,d),distance=Math.hypot(q.x-p.x,q.z-p.z);if(distance<520&&d>20&&d<a.line.length-20)candidates.push({a,q,distance,d});}
+   candidates.sort((a,b)=>a.distance-b.distance);let count=0;
+   for(const {a,q,d}of candidates){if(count>=budget)break;const turn=Math.sin(this.clock*.65+a.phase)*.8,offset=a.offset+turn,x=q.x-Math.cos(q.heading)*offset,z=q.z+Math.sin(q.heading)*offset;
+    if(Math.hypot(x-w.skier.position.x,z-w.skier.position.z)<7)continue;
+    const ahead=lineAt(a.line,Math.min(a.line.length,d+3)),slope=(ahead.y-q.y)/Math.max(1,Math.hypot(ahead.x-q.x,ahead.z-q.z)),skier=this.actors[count],y=w.height(x,z)+.10;
+    skier.root.visible=true;skier.root.position.set(x,y,z);skier.root.rotation.set(-Math.atan(slope),q.heading,turn*.06,'YXZ');
+    skier.update({speed:a.speed,edgeAngle:turn*.25,walking:false,airborne:false,crashed:0,grab:'',softSnow:0},{tuck:a.speed>8},Math.max(0,dt),this.clock,w.height,.2);
+    this.pose.position.set(x,y,z);this.pose.rotation.set(-Math.atan(slope),q.heading,turn*.06,'YXZ');this.pose.scale.setScalar(1);this.pose.updateMatrix();this.bodies.setMatrixAt(count,this.pose.matrix);
+    count++;
+   }
+   for(let i=count;i<this.actors.length;i++)this.actors[i].root.visible=false;
+   this.bodies.count=count;this.bodies.instanceMatrix.needsUpdate=true;
+  }
  }
 }
 export function liftDestinations(world){return world.liftRuns.map((r,i)=>{const points=r.rideLine.map(p=>({x:p.x,y:p.y,z:p.z}));if(points[0].y>points.at(-1).y)points.reverse();const distances=[0];for(let j=1;j<points.length;j++)distances.push(distances.at(-1)+Math.hypot(points[j].x-points[j-1].x,points[j].y-points[j-1].y,points[j].z-points[j-1].z));const line={points,distances,length:distances.at(-1)},top=points.at(-1),nearest=world.domain.locate(top.x,top.z,2),exit=nearest&&nearest.distance<140?{x:nearest.x,z:nearest.z}:{x:top.x+8,z:top.z};return{id:i,name:r.source.name||'Lift',gondola:r.gondola,bottom:points[0],top,exit,exitHeading:nearest?nearest.heading+(world.height(...nearest.a)<world.height(...nearest.b)?Math.PI:0):0,length:line.length,speed:r.speed,at:d=>lineAt(line,d)};});}

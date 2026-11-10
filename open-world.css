@@ -1,7 +1,7 @@
 .discipline-tabs{grid-template-columns:1.2fr 1fr 1fr}
 .discipline-tabs button{white-space:nowrap}
-.explore-status{position:absolute;top:auto;bottom:248px;left:48px;transform:none;border-radius:8px;padding:6px 11px;text-align:left;max-width:240px;pointer-events:none;background:#102a3588}
-.explore-status span{display:block;color:#e4f2ca;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.explore-status{position:static;top:auto;bottom:auto;left:auto;transform:none;border-radius:0;padding:8px 0 0;text-align:left;max-width:100%;pointer-events:none;background:transparent;border:0;box-shadow:none}
+.explore-status span{display:block;color:#e4f2ca;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-shadow:0 2px 10px #1238}
 .explore-status small{display:block;color:#adcad4;font-size:9px;margin-top:3px}
 .explore-actions{position:absolute;top:auto;left:auto;right:42px;bottom:318px;transform:none;display:flex;flex-direction:column;align-items:stretch;gap:6px;z-index:6;max-width:200px}
 .explore-actions button{min-height:36px;border:1px solid #d5e7b44d;border-radius:8px;padding:7px 11px;color:#e4f2ca;font-size:11px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;background:#102a35cc}
@@ -19,8 +19,8 @@
 .travel-list{overflow:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin}
 .travel-list button{display:block;width:100%;text-align:left;min-height:54px;padding:10px;border:0;border-bottom:1px solid #c9e1eb16;background:none;color:#e7f0e8;border-radius:5px}
 .travel-list button:hover{background:#cce99613}.travel-list strong{display:block;font-size:13px;font-weight:500}.travel-list small{display:block;font-size:10px;color:#a9c2cd;margin-top:5px}
-html[data-compact="true"] .explore-status{top:auto;left:max(14px,var(--safe-left));bottom:calc(var(--safe-bottom) + 248px);padding:5px 9px;max-width:160px}
-html[data-compact="true"] .explore-status span{font-size:10px;max-width:148px}
+html[data-compact="true"] .explore-status{position:static;left:auto;bottom:auto;padding:6px 0 0;max-width:100%}
+html[data-compact="true"] .explore-status span{font-size:10px;max-width:100%}
 html[data-compact="true"] .explore-status small{font-size:8px;margin-top:2px}
 html[data-compact="true"] .explore-actions{top:auto;left:auto;right:max(14px,var(--safe-right));bottom:calc(var(--safe-bottom) + 300px);gap:5px;max-width:140px}
 html[data-compact="true"] .explore-actions button{min-height:40px;font-size:10px;padding:6px 9px;max-width:140px}
@@ -29,8 +29,8 @@ html[data-compact="true"] #worldMapDialog h2{font-size:22px;margin:10px 0}
 html[data-compact="true"] .map-description{font-size:11px;line-height:1.5;margin:0 0 12px}
 html[data-compact="true"] .world-map-layout{grid-template-columns:1fr;grid-template-rows:minmax(100px,1fr) minmax(120px,1fr);height:min(58dvh,550px);gap:10px}
 html[data-compact="true"] .travel-list button{min-height:52px}
-html[data-compact="true"][data-orientation="landscape"] .explore-status{top:auto;left:max(12px,var(--safe-left));bottom:calc(var(--safe-bottom) + 12px);padding:4px 8px;max-width:150px}
-html[data-compact="true"][data-orientation="landscape"] .explore-status span{font-size:9px;max-width:140px}
+html[data-compact="true"][data-orientation="landscape"] .explore-status{position:static;left:auto;bottom:auto;padding:4px 0 0;max-width:100%}
+html[data-compact="true"][data-orientation="landscape"] .explore-status span{font-size:9px;max-width:100%}
 html[data-compact="true"][data-orientation="landscape"] .explore-status small{font-size:7px}
 html[data-compact="true"][data-orientation="landscape"] .explore-actions{top:auto;right:max(12px,var(--safe-right));bottom:calc(var(--safe-bottom) + 12px);max-width:130px}
 html[data-compact="true"][data-orientation="landscape"] #worldMapDialog{padding:16px}
